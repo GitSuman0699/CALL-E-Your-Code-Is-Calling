@@ -1,0 +1,62 @@
+export type ServiceCategory = 
+  | 'painting'
+  | 'plumbing'
+  | 'electrical'
+  | 'carpentry'
+  | 'catering'
+  | 'cleaning'
+  | 'logistics'
+  | 'general';
+
+
+
+export interface TargetVendor {
+  id: string;
+  name: string;
+  phone: string;
+  status: 'pending' | 'initializing' | 'dialing' | 'ringing' | 'in-call' | 'analyzing' | 'quoted' | 'no-answer' | 'refused' | 'failed' | 'voicemail' | 'error';
+  callId?: string;
+  priceEstimate?: string;
+  priceNumeric?: number;
+  availability?: string;
+  additionalConditions?: string;
+  providerNotes?: string;
+  evidenceSnippet?: string;
+  transcriptSummary?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  confidenceScore?: number;
+  durationSeconds?: number;
+  updatedAt?: string;
+}
+
+export interface QuoteHuntJob {
+  id: string;
+  title: string;
+  category: ServiceCategory;
+  description: string;
+
+  vendors: TargetVendor[];
+  status: 'initializing' | 'active' | 'completed' | 'partial' | 'failed';
+  calleTaskId?: string;
+  createdAt: string;
+  updatedAt: string;
+  summary?: {
+    totalVendors: number;
+    quotedCount: number;
+    failedCount: number;
+    lowestQuoteVendorId?: string;
+    fastestVendorId?: string;
+    aiRecommendation?: string;
+  };
+}
+
+export interface CreateHuntRequest {
+  category: ServiceCategory;
+  description: string;
+
+  vendors: {
+    name: string;
+    phone: string;
+  }[];
+  dryRunSimulate?: boolean;
+}
