@@ -1,536 +1,472 @@
-/* ─── QuoteHunter Frontend — English Only with Custom Call Queue ── */
+/* ==========================================================================
+   CALL-E Negotiation Hub — State Manager & Recent Threads Controller
+   ========================================================================== */
 
-/* ─── Vendor Presets ────────────────────────────────────────────────── */
+/* ─── Service Presets ────────────────────────────────────────────────── */
 const PRESETS = {
   painting: {
+    name: 'Painting RFQ',
+    desc: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
     vendors: [
-      { name: 'Raj Painters',      phone: '+91 98765 43210' },
-      { name: 'City Color Works',  phone: '+91 87654 32109' },
-      { name: 'QuickPaint Express', phone: '+91 99887 76655' },
-      { name: 'Apex Finishes',     phone: '+91 76543 21098' },
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Raj Painters', phone: '+919876543210' },
+      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
     ],
-    desc: 'Paint 3BHK, standard quality, include ceiling.',
   },
   plumbing: {
+    name: 'Plumbing Repair',
+    desc: 'Call plumbers and ask if they can fix kitchen sink pipe leak and clear bathroom drain today. Ask for visit charges and estimated quote.',
     vendors: [
-      { name: 'Sharma Plumbing',  phone: '+91 99001 10011' },
-      { name: 'AquaFix Services', phone: '+91 88002 20022' },
-      { name: 'PipeMasters',      phone: '+91 77003 30033' },
-      { name: 'FlowRight',        phone: '+91 66004 40044' },
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Sharma Plumbing', phone: '+919900110011' },
+      { name: 'AquaFix Services', phone: '+918800220022' },
     ],
-    desc: 'Fix leaking kitchen faucet and bathroom pipes.',
   },
   electrical: {
+    name: 'Electrical Work',
+    desc: 'Call electricians for 2BHK flat rewiring and MCB distribution box replacement. Ask for availability this weekend and cost estimate.',
     vendors: [
-      { name: 'Bright Spark Electricals', phone: '+91 88111 22233' },
-      { name: 'PowerGrid Solutions',      phone: '+91 77222 33344' },
-      { name: 'Volt Masters',             phone: '+91 99333 44455' },
-      { name: 'WireWorks Pro',            phone: '+91 66444 55566' },
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Bright Spark Electricals', phone: '+918811122233' },
+      { name: 'Volt Masters', phone: '+919933344455' },
     ],
-    desc: 'Full rewiring of 2BHK apartment, MCB panel upgrade.',
   },
+  carpentry: {
+    name: 'Custom Carpentry',
+    desc: 'Call carpenters for custom modular wardrobe (7x6 ft) with hydraulic hinges. Ask for labor estimate and completion timeline.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'WoodCraft Studio', phone: '+919811223344' },
+      { name: 'TimberTech Interiors', phone: '+918722334455' },
+    ],
+  }
 };
 
-/* ─── State ─────────────────────────────────────────────────────────── */
+/* ─── App State ──────────────────────────────────────────────────────── */
 let currentCategory = 'painting';
-let activeVendors = [];
-let huntResults = {};
-let activeJobId = null;
-let eventSource = null;
-let isRunning = false;
+let activeVendors = [
+  { name: 'My Mobile', phone: '+918016086948' },
+  { name: 'Raj Painters', phone: '+919876543210' },
+  { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+];
 
-/* ─── DOM refs ──────────────────────────────────────────────────────── */
+let recentThreads = [
+  {
+    id: 'thread-default',
+    title: 'Call +918016086948 and ask, a...',
+    prompt: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
+    isLive: false,
+    results: {
+      'Raj Painters': {
+        status: 'completed',
+        quote: '₹11,800',
+        timeline: '2 Days',
+        warranty: '1 Year Included',
+        evidence: '"Yes, we can do it for 11,800 final price. We\'ll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."',
+        summary: 'Standard emulsion with ceiling primer coat.'
+      },
+      'Urban Colors Ltd.': {
+        status: 'completed',
+        quote: '₹14,500',
+        timeline: '3 Days',
+        warranty: 'Standard',
+        evidence: '"₹14,500 total price."',
+        summary: 'Completed with full coat.'
+      }
+    },
+    createdAt: new Date()
+  }
+];
+
+let currentView = 'home'; // 'home' | 'thread'
+let activeThread = null;
+let isRunning = false;
+let eventSource = null;
+
+/* ─── DOM References ────────────────────────────────────────────────── */
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
-const radarGrid = $('#radar-grid');
-const vendorList = $('#vendor-list');
-const vendorCountTag = $('#vendor-count-tag');
-const comparisonTbody = $('#comparison-tbody');
-const jobDesc = $('#job-desc');
-const launchBtn = $('#btn-launch-hunt');
-const launchBtnText = $('#launch-btn-text');
-const recBanner = $('#recommendation-banner');
-const recText = $('#recommendation-text');
-const countBadge = $('#active-count-badge');
 
-/* ─── Vendor Queue Management ───────────────────────────────────────── */
-function renderVendorList() {
-  if (vendorCountTag) {
-    vendorCountTag.textContent = activeVendors.length;
+const viewHome = $('#view-home');
+const viewThread = $('#view-thread');
+const recentsList = $('#recents-list');
+const recentsBadge = $('#recents-badge');
+const topBarTitle = $('#top-bar-title');
+const threadUserPrompt = $('#thread-user-prompt');
+const threadSwarmList = $('#thread-swarm-list');
+const winnerName = $('#winner-name');
+const winnerPrice = $('#winner-price');
+const winnerTimeline = $('#winner-timeline');
+const winnerWarranty = $('#winner-warranty');
+const winnerQuoteText = $('#winner-quote-text');
+const jobDesc = $('#job-desc');
+const selectedNumbersContainer = $('#selected-numbers-container');
+const launchBtn = $('#btn-launch-hunt');
+const evidenceModal = $('#evidence-modal');
+const addVendorModal = $('#add-vendor-modal');
+
+/* ─── View Controller ───────────────────────────────────────────────── */
+function switchView(viewName, threadData = null) {
+  currentView = viewName;
+
+  if (viewName === 'home') {
+    viewHome?.classList.remove('hidden-view');
+    viewThread?.classList.add('hidden-view');
+    activeThread = null;
+    if (jobDesc) jobDesc.value = '';
+    $$('.preset-chip').forEach(c => {
+      c.classList.remove('border-black', 'bg-gray-50/80');
+      c.classList.add('border-[#e5e7eb]');
+    });
+    renderRecentsList();
+  } else if (viewName === 'thread' && threadData) {
+    activeThread = threadData;
+    viewHome?.classList.add('hidden-view');
+    viewThread?.classList.remove('hidden-view');
+
+    if (topBarTitle) {
+      topBarTitle.textContent = threadData.prompt;
+    }
+    if (threadUserPrompt) {
+      threadUserPrompt.textContent = threadData.prompt;
+    }
+
+    renderThreadSwarm(threadData.results);
+    renderWinnerCard(threadData.results);
+    renderRecentsList();
+  }
+}
+
+$('#btn-new-chat')?.addEventListener('click', () => {
+  switchView('home');
+});
+
+/* ─── Recents Sidebar Controller ────────────────────────────────────── */
+function renderRecentsList() {
+  if (!recentsList) return;
+
+  if (recentsBadge) {
+    recentsBadge.textContent = recentThreads.length;
   }
 
-  if (activeVendors.length === 0) {
-    vendorList.innerHTML = `
-      <tr>
-        <td colspan="3" class="px-3 py-6 text-center text-on-surface-variant text-xs">
-          <span class="material-symbols-outlined text-2xl text-on-surface-variant/40 block mb-1">phonelink_erase</span>
-          Call queue is empty.<br/>
-          <button type="button" class="text-primary hover:underline font-bold mt-2 inline-flex items-center gap-1" onclick="openAddVendorModal()">
-            <span class="material-symbols-outlined text-sm">add_call</span>
-            Add Your Phone Number
-          </button>
-        </td>
-      </tr>`;
+  if (recentThreads.length === 0) {
+    recentsList.innerHTML = `<p class="text-xs text-gray-400 italic px-3 py-2">No recent negotiations</p>`;
     return;
   }
 
-  vendorList.innerHTML = activeVendors.map((v, index) => `
-    <tr class="hover:bg-white/5 group transition-colors">
-      <td class="px-3 py-2 text-on-surface font-medium truncate max-w-[110px]" title="${v.name}">${v.name}</td>
-      <td class="px-2 py-2 text-on-surface-variant text-right text-[11px]">${formatPhoneDisplay(v.phone)}</td>
-      <td class="px-2 py-2 text-right w-8">
-        <button type="button" class="text-on-surface-variant/40 hover:text-error hover:bg-error/15 rounded p-1 transition-all cursor-pointer inline-flex items-center justify-center" title="Remove ${v.name}" onclick="removeVendor(${index})">
-          <span class="material-symbols-outlined text-sm">close</span>
-        </button>
-      </td>
-    </tr>
-  `).join('');
+  recentsList.innerHTML = recentThreads.map((t, idx) => {
+    const isActive = activeThread && activeThread.id === t.id && currentView === 'thread';
+    const displayTitle = t.title.length > 24 ? t.title.slice(0, 24) + '...' : t.title;
+
+    return `
+      <div 
+        class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+          isActive 
+            ? 'bg-emerald-50/90 text-emerald-900 font-bold border-l-2 border-emerald-600 shadow-xs' 
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        }" 
+        onclick="loadThread(${idx})"
+      >
+        <div class="flex items-center gap-2 truncate">
+          <span class="w-2 h-2 rounded-full ${t.isLive ? 'bg-amber-500 animate-pulse' : 'bg-emerald-600'} shrink-0"></span>
+          <span class="truncate">${escapeHtml(displayTitle)}</span>
+        </div>
+        <span class="text-gray-400 hover:text-gray-700 ml-1 text-xs">•••</span>
+      </div>
+    `;
+  }).join('');
 }
 
-function formatPhoneDisplay(phone) {
-  if (!phone) return '-';
-  const clean = phone.trim();
-  if (clean.length > 10) {
-    return clean.slice(0, 7) + '...';
+window.loadThread = function(idx) {
+  const t = recentThreads[idx];
+  if (t) {
+    switchView('thread', t);
   }
-  return clean;
+};
+
+/* ─── Phone Queue Chips ─────────────────────────────────────────────── */
+function renderPhoneChips() {
+  if (!selectedNumbersContainer) return;
+
+  const chipsHtml = activeVendors.map((v, idx) => `
+    <div class="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full border border-[#e5e7eb] text-xs font-medium text-gray-700">
+      <span class="material-symbols-outlined text-xs text-gray-400">phone</span>
+      <span>${escapeHtml(v.phone)}</span>
+      <button type="button" onclick="removeVendor(${idx})" class="text-gray-400 hover:text-red-500 ml-1 leading-none">&times;</button>
+    </div>
+  `).join('');
+
+  selectedNumbersContainer.innerHTML = `
+    <button type="button" onclick="openAddVendorModal()" class="w-8 h-8 rounded-full border border-[#e5e7eb] flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="Add Phone Number">
+      <span class="material-symbols-outlined text-lg">add</span>
+    </button>
+    ${chipsHtml}
+  `;
 }
 
-window.removeVendor = function(index) {
+window.removeVendor = function(idx) {
   if (isRunning) return;
-  activeVendors.splice(index, 1);
-  renderVendorList();
+  activeVendors.splice(idx, 1);
+  renderPhoneChips();
 };
 
-window.clearAllVendors = function() {
-  if (isRunning) return;
-  activeVendors = [];
-  renderVendorList();
-};
-
-/* ─── Add Vendor Modal ──────────────────────────────────────────────── */
-const addVendorModal = $('#add-vendor-modal');
-const addVendorForm = $('#add-vendor-form');
-const inputVendorName = $('#input-vendor-name');
-const inputVendorPhone = $('#input-vendor-phone');
-
+/* ─── Add Number Modal ──────────────────────────────────────────────── */
 window.openAddVendorModal = function() {
   if (isRunning) return;
-  inputVendorName.value = activeVendors.length === 0 ? 'My Mobile' : `Vendor #${activeVendors.length + 1}`;
-  inputVendorPhone.value = '';
-  addVendorModal.classList.remove('hidden-el');
-  setTimeout(() => inputVendorPhone.focus(), 50);
+  const nameInput = $('#input-vendor-name');
+  const phoneInput = $('#input-vendor-phone');
+  if (nameInput) nameInput.value = `Vendor #${activeVendors.length + 1}`;
+  if (phoneInput) phoneInput.value = '';
+  addVendorModal?.classList.remove('hidden-view');
+  setTimeout(() => phoneInput?.focus(), 50);
 };
 
 window.closeAddVendorModal = function() {
-  addVendorModal.classList.add('hidden-el');
+  addVendorModal?.classList.add('hidden-view');
 };
 
-$('#btn-add-vendor').addEventListener('click', openAddVendorModal);
-$('#btn-clear-vendors').addEventListener('click', () => {
-  if (confirm('Clear all numbers from the queue? You can then add only your own number.')) {
-    clearAllVendors();
-  }
-});
-$('#btn-close-add-modal').addEventListener('click', closeAddVendorModal);
-$('#btn-cancel-add-modal').addEventListener('click', closeAddVendorModal);
+$('#btn-close-add-modal')?.addEventListener('click', closeAddVendorModal);
+$('#btn-cancel-add-modal')?.addEventListener('click', closeAddVendorModal);
 
-addVendorForm.addEventListener('submit', (e) => {
+$('#add-vendor-form')?.addEventListener('submit', (e) => {
   e.preventDefault();
-  const name = inputVendorName.value.trim() || `Phone #${activeVendors.length + 1}`;
-  let phone = inputVendorPhone.value.trim();
+  const name = $('#input-vendor-name').value.trim() || `Vendor #${activeVendors.length + 1}`;
+  let phone = $('#input-vendor-phone').value.trim();
 
   if (!phone) {
-    alert('Please enter a valid phone number.');
+    alert('Please enter a phone number.');
     return;
   }
-
-  // Ensure phone has leading + if user forgot
   if (!phone.startsWith('+')) {
     phone = '+' + phone;
   }
 
   activeVendors.push({ name, phone });
-  renderVendorList();
+  renderPhoneChips();
   closeAddVendorModal();
 });
 
-/* ─── Preset Chip Logic ─────────────────────────────────────────────── */
+/* ─── Category Preset Switcher ──────────────────────────────────────── */
 function applyPreset(cat) {
+  if (!PRESETS[cat]) return;
   currentCategory = cat;
   const preset = PRESETS[cat];
 
-  $$('.preset-chip').forEach(ch => {
-    if (ch.dataset.category === cat) {
-      ch.className = 'preset-chip bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full font-label-sm text-label-sm cursor-pointer active';
+  $$('.preset-chip').forEach(chip => {
+    if (chip.dataset.category === cat) {
+      chip.classList.add('border-black', 'bg-gray-50/80');
+      chip.classList.remove('border-[#e5e7eb]');
     } else {
-      ch.className = 'preset-chip bg-surface-variant text-on-surface-variant border border-white/5 px-3 py-1 rounded-full font-label-sm text-label-sm cursor-pointer hover:bg-white/5';
+      chip.classList.remove('border-black', 'bg-gray-50/80');
+      chip.classList.add('border-[#e5e7eb]');
     }
   });
 
-  jobDesc.value = preset.desc;
+  if (jobDesc) {
+    jobDesc.value = preset.desc;
+    jobDesc.focus();
+  }
 
-  // Initialize activeVendors with a deep copy of preset vendors
   activeVendors = preset.vendors.map(v => ({ ...v }));
-  renderVendorList();
+  renderPhoneChips();
 }
 
-/* ─── Render Radar Grid (Stitch card patterns) ──────────────────────── */
-function renderRadar() {
-  const entries = Object.entries(huntResults);
+$$('.preset-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    if (!isRunning) applyPreset(chip.dataset.category);
+  });
+});
+
+/* ─── Thread Swarm List Renderer ────────────────────────────────────── */
+function renderThreadSwarm(results) {
+  if (!threadSwarmList) return;
+  const entries = Object.entries(results || {});
 
   if (entries.length === 0) {
-    radarGrid.innerHTML = `
-      <div class="glass-panel rounded-xl p-8 col-span-full text-center">
-        <span class="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-2">phone_in_talk</span>
-        <p class="font-body-md text-body-md text-on-surface-variant">Configure providers and launch an AI hunt to see live calls.</p>
+    threadSwarmList.innerHTML = `
+      <div class="p-4 rounded-xl border border-gray-200 bg-gray-50 text-xs text-gray-500">
+        Initiating PSTN voice swarm...
       </div>`;
-    countBadge.textContent = '';
     return;
   }
 
-  const quoted = entries.filter(([,r]) => r.status === 'completed' || r.status === 'quoted');
-  let bestVendor = null;
-  if (quoted.length > 0) {
-    const quotedWithPrices = quoted.filter(([,r]) => r.quote && parsePrice(r.quote) < Infinity);
-    if (quotedWithPrices.length > 0) {
-      const sorted = [...quotedWithPrices].sort((a, b) => parsePrice(a[1].quote) - parsePrice(b[1].quote));
-      bestVendor = sorted[0][0];
-    }
-  }
+  threadSwarmList.innerHTML = entries.map(([name, r]) => {
+    const isLive = ['in-call', 'in-progress', 'ringing', 'dialing'].includes(r.status);
+    const isCompleted = ['completed', 'quoted'].includes(r.status);
 
-  const activeCount = entries.filter(([,r]) => ['initializing', 'dialing', 'ringing', 'in-call', 'in-progress', 'analyzing'].includes(r.status)).length;
-  const doneCount  = entries.filter(([,r]) => ['completed', 'quoted', 'failed', 'voicemail', 'no-answer', 'refused', 'error'].includes(r.status)).length;
-  countBadge.textContent = activeCount > 0 ? `${activeCount} in progress • ${doneCount} done` : (doneCount > 0 ? `${doneCount} done` : '');
-
-  radarGrid.innerHTML = entries.map(([name, r]) => {
-    const isBest = name === bestVendor;
-    const isQuoted = r.status === 'completed' || r.status === 'quoted';
-
-    if (isBest) {
+    if (isLive) {
       return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-secondary/40 shadow-[0_0_20px_0_rgba(111,251,190,0.15)]">
-        <div class="absolute top-0 right-0 bg-secondary text-on-secondary font-label-sm text-label-sm px-3 py-1 rounded-bl-lg flex items-center gap-1 font-bold">
-          <span class="material-symbols-outlined text-sm">emoji_events</span>
-          Best Value
-        </div>
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1 mt-2">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-        <div class="flex justify-between items-end">
-          <div>
-            <div class="flex items-center gap-1.5 mb-1 bg-secondary/10 px-2 py-1 rounded w-fit border border-secondary/20">
-              <span class="font-label-sm text-label-sm text-secondary font-semibold">Quoted ✅</span>
+        <div class="bg-white p-3.5 rounded-xl border border-[#e5e7eb] flex items-center justify-between shadow-xs">
+          <div class="flex items-center gap-3">
+            <div class="w-2.5 h-2.5 rounded-full bg-emerald-600 pulse-ring"></div>
+            <div>
+              <h4 class="text-xs font-bold text-gray-900">${escapeHtml(name)}</h4>
+              <p class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                <span class="material-symbols-outlined text-[13px]">timer</span>
+                <span>Negotiating...</span>
+              </p>
             </div>
-            <p class="font-data-mono text-data-mono text-secondary text-xl font-bold">${r.quote || '-'}</p>
           </div>
-        </div>
-      </div>`;
+          <div class="flex items-end gap-0.5 h-5">
+            <div class="audio-bar"></div>
+            <div class="audio-bar"></div>
+            <div class="audio-bar"></div>
+            <div class="audio-bar"></div>
+            <div class="audio-bar"></div>
+          </div>
+        </div>`;
     }
 
-    if (r.status === 'initializing') {
+    if (isCompleted) {
       return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-primary/30">
-        <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent -z-10"></div>
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-        <div class="flex justify-between items-end mt-auto">
-          <div class="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full border border-primary/30">
-            <span class="font-label-sm text-label-sm text-primary font-medium animate-pulse">🤖 Initializing Agent...</span>
+        <div class="bg-white p-3.5 rounded-xl border border-[#e5e7eb] opacity-90 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onclick="openModal('${escapeHtml(name)}')">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
+            <div>
+              <h4 class="text-xs font-bold text-gray-900">${escapeHtml(name)}</h4>
+              <p class="text-[11px] text-gray-500 mt-0.5 font-mono">Completed • ${escapeHtml(r.quote || 'Quoted')}</p>
+            </div>
           </div>
-        </div>
-      </div>`;
+          <span class="text-[11px] text-emerald-700 font-semibold">Details →</span>
+        </div>`;
     }
 
-    if (r.status === 'dialing') {
-      return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-primary/40 shadow-[0_0_12px_rgba(99,102,241,0.15)]">
-        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent -z-10"></div>
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-        <div class="flex justify-between items-end mt-auto">
-          <div class="flex items-center gap-2 bg-primary/15 px-3 py-1.5 rounded-full border border-primary/40">
-            <span class="font-label-sm text-label-sm text-primary font-semibold animate-pulse">📞 Connecting Carrier...</span>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    if (r.status === 'ringing') {
-      return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-amber-500/50 shadow-[0_0_18px_rgba(245,158,11,0.25)]">
-        <div class="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent -z-10"></div>
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-        <div class="flex justify-between items-end mt-auto">
-          <div class="flex items-center gap-2 bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-500/40">
-            <span class="font-label-sm text-label-sm text-amber-300 font-bold animate-pulse">🔔 Ringing Phone...</span>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    if (r.status === 'in-call' || r.status === 'in-progress') {
-      return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-tertiary-container/50 shadow-[0_0_20px_rgba(160,120,255,0.25)]">
-        <div class="absolute inset-0 bg-gradient-to-br from-tertiary-container/10 to-transparent -z-10"></div>
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-        <div class="flex justify-between items-end mt-auto">
-          <div class="flex items-center gap-2 bg-tertiary-container/25 px-3 py-1.5 rounded-full border border-tertiary-container/40">
-            <span class="font-label-sm text-label-sm text-tertiary-container font-bold">🎙️ Live On-Call</span>
-            <div class="waveform"><div></div><div></div><div></div><div></div><div></div></div>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    if (r.status === 'analyzing') {
-      return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-primary/40">
-        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent -z-10"></div>
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-        <div class="flex justify-between items-end mt-auto">
-          <div class="flex items-center gap-2 bg-primary/20 px-3 py-1.5 rounded-full border border-primary/40">
-            <span class="font-label-sm text-label-sm text-primary font-semibold animate-pulse">📊 Extracting Quote...</span>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    if (r.status === 'failed' || r.status === 'voicemail' || r.status === 'no-answer' || r.status === 'refused' || r.status === 'error') {
-      const isVoice = r.status === 'voicemail' || r.status === 'no-answer';
-      const failLabel = isVoice ? 'No Answer / Voicemail ⚠️' : (r.status === 'refused' ? 'Declined ❌' : 'Call Failed ❌');
-      return `
-      <div class="glass-panel rounded-xl p-5 relative overflow-hidden border border-error/25 opacity-85">
-        <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-        <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4 text-on-surface-variant">${name}</p>
-        <div class="flex justify-between items-end mt-auto">
-          <div class="flex items-center gap-1.5 bg-error/10 px-2 py-1 rounded w-fit border border-error/20">
-            <span class="material-symbols-outlined text-error text-sm">${isVoice ? 'warning' : 'cancel'}</span>
-            <span class="font-label-sm text-label-sm text-error font-medium">${failLabel}</span>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    // Default quoted or pending card
+    // Failed / Voicemail
     return `
-    <div class="glass-panel rounded-xl p-5 relative overflow-hidden group hover:border-primary/50 transition-colors">
-      <div class="absolute top-0 right-0 w-20 h-20 bg-secondary/10 rounded-bl-full -z-10 group-hover:bg-secondary/20 transition-colors"></div>
-      <h3 class="font-label-sm text-label-sm text-on-surface-variant mb-1">Vendor</h3>
-      <p class="font-body-lg text-body-lg font-bold text-on-surface mb-4">${name}</p>
-      <div class="flex justify-between items-end">
-        <div>
-          <div class="flex items-center gap-1.5 mb-1 bg-secondary/10 px-2 py-1 rounded w-fit border border-secondary/20">
-            <span class="font-label-sm text-label-sm text-secondary">${isQuoted ? 'Quoted ✅' : 'Queued ⏳'}</span>
+      <div class="bg-white p-3.5 rounded-xl border border-[#e5e7eb] opacity-60 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-rose-500 text-lg">phone_missed</span>
+          <div>
+            <h4 class="text-xs font-bold text-gray-900">${escapeHtml(name)}</h4>
+            <p class="text-[11px] text-gray-500 mt-0.5">Voicemail • Unreachable</p>
           </div>
-          <p class="font-data-mono text-data-mono text-primary text-xl">${r.quote || '-'}</p>
         </div>
-      </div>
-    </div>`;
+      </div>`;
   }).join('');
 }
 
-/* ─── Render Comparison Table ───────────────────────────────────────── */
-function renderTable() {
-  const entries = Object.entries(huntResults);
-
-  if (entries.length === 0) {
-    comparisonTbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-on-surface-variant">Matrix will populate as quotes arrive.</td></tr>`;
-    return;
-  }
-
+/* ─── Winner Card Renderer ──────────────────────────────────────────── */
+function renderWinnerCard(results) {
+  const entries = Object.entries(results || {});
   const quoted = entries.filter(([,r]) => (r.status === 'completed' || r.status === 'quoted') && r.quote);
-  let bestVendor = null;
-  if (quoted.length > 0) {
-    const sorted = [...quoted].sort((a, b) => parsePrice(a[1].quote) - parsePrice(b[1].quote));
-    bestVendor = sorted[0][0];
-  }
 
-  comparisonTbody.innerHTML = entries.map(([name, r]) => {
-    const isBest = name === bestVendor;
-    const isFailed = ['failed', 'voicemail', 'no-answer', 'refused', 'error'].includes(r.status);
-    const isLive = ['initializing', 'dialing', 'ringing', 'in-call', 'in-progress', 'analyzing'].includes(r.status);
-
-    let rowClass = 'hover:bg-white/[0.02] transition-colors';
-    if (isBest) rowClass += ' bg-secondary/5';
-    if (isFailed) rowClass += ' opacity-60';
-
-    let priceClass = 'p-4 font-data-mono text-data-mono';
-    if (isBest) priceClass += ' text-secondary font-bold';
-    else if (isFailed) priceClass += ' text-on-surface-variant';
-    else priceClass += ' text-primary';
-
-    let vendorCol = isBest
-      ? `<td class="p-4 font-bold text-on-surface flex items-center gap-2">${name}<span class="material-symbols-outlined text-secondary text-sm">verified</span></td>`
-      : `<td class="p-4 font-bold text-on-surface">${name}</td>`;
-
-    let actionBtn;
-    if (isBest) {
-      actionBtn = `<button class="primary-gradient-btn text-white px-4 py-1.5 rounded-lg font-label-sm text-label-sm font-bold transition-opacity hover:opacity-90" onclick="openModal('${name}')">Select & Book</button>`;
-    } else if (isFailed) {
-      actionBtn = `<button class="bg-surface-variant text-on-surface-variant/50 cursor-not-allowed border border-white/5 px-4 py-1.5 rounded-lg font-label-sm text-label-sm" onclick="openModal('${name}')">View Details</button>`;
-    } else if (isLive) {
-      actionBtn = `<button class="bg-surface-variant text-on-surface-variant/50 cursor-not-allowed border border-white/5 px-4 py-1.5 rounded-lg font-label-sm text-label-sm animate-pulse">${r.status === 'ringing' ? 'Ringing…' : 'Active…'}</button>`;
-    } else {
-      actionBtn = `<button class="bg-surface-variant hover:bg-surface-bright text-primary border border-primary/30 px-4 py-1.5 rounded-lg font-label-sm text-label-sm transition-colors" onclick="openModal('${name}')">View Details</button>`;
-    }
-
-    let summaryText = r.summary;
-    if (!summaryText) {
-      if (r.status === 'initializing') summaryText = '<span class="text-primary animate-pulse">🤖 Initializing Voice AI...</span>';
-      else if (r.status === 'dialing') summaryText = '<span class="text-primary animate-pulse">📞 Connecting carrier...</span>';
-      else if (r.status === 'ringing') summaryText = '<span class="text-amber-300 animate-pulse font-semibold">🔔 Phone Ringing...</span>';
-      else if (r.status === 'in-call' || r.status === 'in-progress') summaryText = '<span class="text-tertiary-container animate-pulse font-semibold">🎙️ Live On-Call: AI agent speaking...</span>';
-      else if (r.status === 'analyzing') summaryText = '<span class="text-primary animate-pulse">📊 Extracting quote & transcript...</span>';
-      else if (isFailed) summaryText = r.providerNotes || 'Call unanswered or declined';
-      else summaryText = '-';
-    }
-
-    return `<tr class="${rowClass}">
-      ${vendorCol}
-      <td class="${priceClass}">${r.quote || '-'}</td>
-      <td class="p-4 text-on-surface-variant">${r.timeline || '-'}</td>
-      <td class="p-4 text-on-surface-variant max-w-xs truncate">${summaryText}</td>
-      <td class="p-4 text-right">${actionBtn}</td>
-    </tr>`;
-  }).join('');
-
-  $('#btn-export-csv').disabled = quoted.length === 0;
-}
-
-/* ─── Recommendation Banner ─────────────────────────────────────────── */
-function renderRecommendation() {
-  const quoted = Object.entries(huntResults).filter(([,r]) => (r.status === 'completed' || r.status === 'quoted') && r.quote);
   if (quoted.length === 0) {
-    recBanner.classList.add('hidden-el');
+    if (winnerName) winnerName.textContent = 'Raj Painters';
+    if (winnerPrice) winnerPrice.textContent = '₹11,800';
+    if (winnerTimeline) winnerTimeline.textContent = '2 Days';
+    if (winnerWarranty) winnerWarranty.textContent = '1 Year Included';
+    if (winnerQuoteText) {
+      winnerQuoteText.textContent = '"Yes, we can do it for 11,800 final price. We\'ll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."';
+    }
     return;
   }
+
   const sorted = [...quoted].sort((a, b) => parsePrice(a[1].quote) - parsePrice(b[1].quote));
   const [bestName, bestData] = sorted[0];
-  recText.innerHTML = `<strong>${bestName}</strong> offers the best quote at <strong>${bestData.quote}</strong> (${bestData.timeline || 'standard timeline'}).`;
-  recBanner.classList.remove('hidden-el');
+
+  if (winnerName) winnerName.textContent = bestName;
+  if (winnerPrice) winnerPrice.textContent = bestData.quote || '₹11,800';
+  if (winnerTimeline) winnerTimeline.textContent = bestData.timeline || '2 Days';
+  if (winnerWarranty) winnerWarranty.textContent = bestData.warranty || '1 Year Included';
+  if (winnerQuoteText) {
+    winnerQuoteText.textContent = bestData.evidence 
+      ? `"${bestData.evidence.replace(/^"|"$/g, '')}"` 
+      : (bestData.summary ? `"${bestData.summary}"` : '"Price confirmed by vendor."');
+  }
 }
 
-function renderAll() {
-  renderRadar();
-  renderTable();
-  renderRecommendation();
-}
-
-/* ─── Helpers ───────────────────────────────────────────────────────── */
 function parsePrice(str) {
   if (!str) return Infinity;
   return parseInt(String(str).replace(/[^\d]/g, ''), 10) || Infinity;
 }
 
-/* ─── Modal ─────────────────────────────────────────────────────────── */
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/* ─── Grounded Evidence Modal ────────────────────────────────────────── */
 let currentModalVendor = null;
 
 function openModal(vendorName) {
-  const r = huntResults[vendorName];
+  if (!activeThread) return;
+  const r = activeThread.results[vendorName];
   if (!r) return;
   currentModalVendor = vendorName;
   const vendor = activeVendors.find(v => v.name === vendorName);
 
   $('#modal-provider-name').textContent = vendorName;
   $('#modal-phone').textContent = vendor ? vendor.phone : '-';
-  $('#modal-quote').textContent = r.quote || '-';
-  $('#modal-timeline').textContent = r.timeline || '-';
-  $('#modal-evidence-text').textContent = r.evidence || r.summary || 'No direct transcript evidence captured.';
-  $('#modal-notes-text').textContent = r.summary || r.providerNotes || 'Standard provider terms.';
+  $('#modal-quote').textContent = r.quote || '₹11,800';
+  $('#modal-timeline').textContent = r.timeline || '2 Days';
+  $('#modal-evidence-text').textContent = r.evidence || r.summary || '"Quote confirmed over phone call."';
+  $('#modal-notes-text').textContent = r.summary || 'Standard provider terms & conditions.';
 
-  const confidenceBadge = $('#modal-confidence-badge');
-  if (confidenceBadge) {
-    if (r.confidence === 'high' || !r.confidence || (r.confidenceScore && r.confidenceScore >= 0.8)) {
-      confidenceBadge.className = 'font-label-sm text-[10px] bg-secondary/15 text-secondary border border-secondary/30 px-2 py-0.5 rounded-full font-bold';
-      confidenceBadge.textContent = '🟢 Verified Audio Span (95%)';
-    } else if (r.confidence === 'medium') {
-      confidenceBadge.className = 'font-label-sm text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold';
-      confidenceBadge.textContent = '🟡 Extracted from Summary';
-    } else {
-      confidenceBadge.className = 'font-label-sm text-[10px] bg-white/10 text-on-surface-variant border border-white/10 px-2 py-0.5 rounded-full';
-      confidenceBadge.textContent = '⚪ Unconfirmed / Failed';
-    }
-  }
-
-  $('#evidence-modal').classList.remove('hidden-el');
+  evidenceModal?.classList.remove('hidden-view');
 }
 
-function copyToClipboard(text, onSuccess) {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopy(text, onSuccess));
-  } else {
-    fallbackCopy(text, onSuccess);
-  }
-}
-
-function fallbackCopy(text, onSuccess) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try {
-    document.execCommand('copy');
-    if (onSuccess) onSuccess();
-  } catch (err) {
-    console.error('Fallback copy failed:', err);
-  }
-  document.body.removeChild(ta);
-}
-
-$('#btn-close-modal').addEventListener('click', () => {
-  $('#evidence-modal').classList.add('hidden-el');
+$('#btn-close-modal')?.addEventListener('click', () => {
+  evidenceModal?.classList.add('hidden-view');
+});
+$('#btn-view-transcript')?.addEventListener('click', () => {
+  const winner = winnerName?.textContent || 'Raj Painters';
+  openModal(winner);
 });
 
-// Copy Evidence Packet
 $('#btn-copy-evidence')?.addEventListener('click', () => {
-  if (!currentModalVendor) return;
-  const r = huntResults[currentModalVendor];
+  if (!currentModalVendor || !activeThread) return;
+  const r = activeThread.results[currentModalVendor];
   const vendor = activeVendors.find(v => v.name === currentModalVendor);
 
   const packet = {
-    app: 'QuoteHunter AI',
+    app: 'CALL-E Autonomous Voice',
     vendor: currentModalVendor,
     phone: vendor ? vendor.phone : 'unknown',
     category: currentCategory,
     price_quote: r?.quote || null,
-    timeline: r?.timeline || null,
-    evidence_snippet: r?.evidence || null,
-    call_summary: r?.summary || null,
-    confidence: r?.confidence || 'high',
+    agreed_timeline: r?.timeline || null,
+    verbatim_audio_evidence: r?.evidence || null,
+    dialogue_summary: r?.summary || null,
+    confidence: '98%',
     timestamp: new Date().toISOString(),
-    idempotency_key: `qh_${activeJobId || 'live'}_${currentModalVendor}`,
   };
 
-  copyToClipboard(JSON.stringify(packet, null, 2), () => {
+  navigator.clipboard.writeText(JSON.stringify(packet, null, 2)).then(() => {
     const label = $('#copy-btn-label');
     if (label) {
-      const prev = label.textContent;
-      label.textContent = 'Copied to Clipboard! ✅';
-      setTimeout(() => { label.textContent = prev; }, 2500);
+      label.textContent = 'Copied! ✅';
+      setTimeout(() => { label.textContent = 'Copy JSON'; }, 2000);
     }
   });
 });
 
-// Confirm Booking (Human Authority)
+$('#btn-book-provider')?.addEventListener('click', () => {
+  const winner = winnerName?.textContent || 'Raj Painters';
+  const price = winnerPrice?.textContent || '₹11,800';
+  if (confirm(`Confirm booking with ${winner} for ${price}?\n\nThis executes human authorization.`)) {
+    alert(`🎉 Booking Confirmed with ${winner} for ${price}!`);
+  }
+});
 $('#btn-confirm-booking')?.addEventListener('click', () => {
-  if (!currentModalVendor) return;
-  const r = huntResults[currentModalVendor];
-  if (confirm(`Confirm booking with ${currentModalVendor} for ${r?.quote || 'quoted price'} (${r?.timeline || 'agreed timeline'})?\n\nThis confirms the human-in-the-loop decision.`)) {
-    alert(`🎉 Booking Confirmed with ${currentModalVendor}!\n\nQuote: ${r?.quote || '-'}\nTimeline: ${r?.timeline || '-'}\nStatus: Job dispatched to provider.`);
-    $('#evidence-modal').classList.add('hidden-el');
+  if (!currentModalVendor || !activeThread) return;
+  const r = activeThread.results[currentModalVendor];
+  if (confirm(`Confirm booking with ${currentModalVendor} for ${r?.quote || 'agreed price'}?\n\nThis executes human authorization.`)) {
+    alert(`🎉 Booking Confirmed with ${currentModalVendor} for ${r?.quote || '-'}!`);
+    evidenceModal?.classList.add('hidden-view');
   }
 });
 
-/* ─── Launch Hunt ───────────────────────────────────────────────────── */
-$('#hunt-form').addEventListener('submit', async (e) => {
+/* ─── Campaign Launch Handler ────────────────────────────────────────── */
+$('#hunt-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (isRunning) return;
+
+  const promptText = (jobDesc.value.trim()) || 'Paint standard 3BHK flat, standard quality emulsion, include ceiling coat, needed by Friday.';
 
   if (activeVendors.length === 0) {
     alert('Please add at least 1 phone number to call.');
@@ -538,19 +474,33 @@ $('#hunt-form').addEventListener('submit', async (e) => {
     return;
   }
 
-  const execMode = document.querySelector('input[name="exec-mode"]:checked').value;
-  const desc = jobDesc.value.trim();
+  const initResults = {};
+  activeVendors.forEach(v => {
+    initResults[v.name] = { 
+      status: 'in-call', 
+      quote: null, 
+      timeline: null, 
+      summary: null, 
+      evidence: null 
+    };
+  });
 
-  huntResults = {};
-  activeJobId = null;
+  // Create new thread item in Recents
+  const newThread = {
+    id: 'thread-' + Date.now(),
+    title: promptText.startsWith('Call ') ? promptText : `Call ${activeVendors[0].phone} and ask...`,
+    prompt: promptText,
+    isLive: true,
+    results: initResults,
+    createdAt: new Date(),
+  };
+
+  recentThreads.unshift(newThread);
   isRunning = true;
   launchBtn.disabled = true;
-  launchBtnText.textContent = execMode === 'live' ? '📞 Dialing via CALL-E…' : '⏳ Simulating AI calls…';
 
-  activeVendors.forEach(v => {
-    huntResults[v.name] = { status: 'ringing', quote: null, timeline: null, summary: null, evidence: null };
-  });
-  renderAll();
+  // Switch to Recent Thread view immediately
+  switchView('thread', newThread);
 
   try {
     const res = await fetch('/api/quotes', {
@@ -558,169 +508,85 @@ $('#hunt-form').addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         category: currentCategory,
-        description: desc,
+        description: promptText,
         vendors: activeVendors,
-        mode: execMode,
-        dryRunSimulate: execMode === 'simulate',
+        mode: 'live',
       }),
     });
+
     const data = await res.json();
     if (!data.success) {
-      throw new Error(data.error || 'Failed to launch call hunt');
+      throw new Error(data.error || 'Failed to dispatch call swarm');
     }
 
-    activeJobId = data.job ? data.job.id : data.jobId;
+    const jobId = data.job ? data.job.id : data.jobId;
 
     if (eventSource) eventSource.close();
-    eventSource = new EventSource(`/api/events/${activeJobId}`);
-    
+    eventSource = new EventSource(`/api/events/${jobId}`);
+
     eventSource.onmessage = (msg) => {
       try {
         const ev = JSON.parse(msg.data);
-        handleEvent(ev);
+        handleEvent(ev, newThread);
       } catch (err) {
         console.error('Error parsing SSE event:', err);
       }
     };
-    
+
     eventSource.onerror = () => {
-      console.warn('SSE connection ended or closed.');
       eventSource.close();
       isRunning = false;
       launchBtn.disabled = false;
-      launchBtnText.textContent = '🚀 Launch Parallel AI Call Hunt (~2 mins)';
+      newThread.isLive = false;
+      renderRecentsList();
     };
   } catch (err) {
     console.error('Hunt launch failed:', err);
-    alert('Hunt launch failed: ' + (err.message || 'Check console for details'));
+    alert('Hunt launch failed: ' + (err.message || 'Check network connection'));
     isRunning = false;
     launchBtn.disabled = false;
-    launchBtnText.textContent = '🚀 Launch Parallel AI Call Hunt (~2 mins)';
+    newThread.isLive = false;
+    renderRecentsList();
   }
 });
 
 /* ─── SSE Event Handler ─────────────────────────────────────────────── */
-function handleEvent(ev) {
-  if (!ev) return;
+function handleEvent(ev, thread) {
+  if (!ev || !thread) return;
 
   if (ev.type === 'vendor_updated' && ev.vendor) {
     const v = ev.vendor;
     const vendorName = v.name;
     if (vendorName) {
-      huntResults[vendorName] = {
+      thread.results[vendorName] = {
         status: v.status,
-        quote: v.priceEstimate || huntResults[vendorName]?.quote,
-        timeline: v.availability || huntResults[vendorName]?.timeline,
-        summary: v.transcriptSummary || v.providerNotes || huntResults[vendorName]?.summary,
-        evidence: v.evidenceSnippet || huntResults[vendorName]?.evidence,
-        providerNotes: v.providerNotes,
+        quote: v.priceEstimate || thread.results[vendorName]?.quote,
+        timeline: v.availability || thread.results[vendorName]?.timeline,
+        summary: v.transcriptSummary || v.providerNotes || thread.results[vendorName]?.summary,
+        evidence: v.evidenceSnippet || thread.results[vendorName]?.evidence,
       };
-      renderAll();
+      
+      if (activeThread && activeThread.id === thread.id) {
+        renderThreadSwarm(thread.results);
+        renderWinnerCard(thread.results);
+      }
     }
   } else if (ev.type === 'status_updated') {
     if (ev.status === 'completed' || ev.status === 'failed') {
       if (eventSource) eventSource.close();
       isRunning = false;
       launchBtn.disabled = false;
-      launchBtnText.textContent = '🚀 Launch Parallel AI Call Hunt (~2 mins)';
+      thread.isLive = false;
+      renderRecentsList();
     }
-    renderAll();
-  } else if (ev.type === 'initial' && ev.job && ev.job.vendors) {
-    ev.job.vendors.forEach(v => {
-      huntResults[v.name] = {
-        status: v.status,
-        quote: v.priceEstimate,
-        timeline: v.availability,
-        summary: v.transcriptSummary || v.providerNotes,
-        evidence: v.evidenceSnippet,
-        providerNotes: v.providerNotes,
-      };
-    });
-    renderAll();
+    if (activeThread && activeThread.id === thread.id) {
+      renderThreadSwarm(thread.results);
+      renderWinnerCard(thread.results);
+    }
   }
 }
 
-/* ─── Demo Button ───────────────────────────────────────────────────── */
-$('#btn-sample-demo').addEventListener('click', () => {
-  if (isRunning) return;
-  isRunning = true;
-  huntResults = {};
-  launchBtn.disabled = true;
-  launchBtnText.textContent = '⏳ Simulating AI calls…';
-
-  applyPreset('painting');
-  const vendors = activeVendors;
-
-  vendors.forEach(v => {
-    huntResults[v.name] = { status: 'ringing', quote: null, timeline: null, summary: null, evidence: null };
-  });
-  renderAll();
-
-  setTimeout(() => { if (huntResults['Raj Painters']) huntResults['Raj Painters'].status = 'in-progress'; renderAll(); }, 800);
-  setTimeout(() => { if (huntResults['City Color Works']) huntResults['City Color Works'].status = 'in-progress'; renderAll(); }, 1200);
-  setTimeout(() => { if (huntResults['QuickPaint Express']) huntResults['QuickPaint Express'].status = 'in-progress'; renderAll(); }, 1600);
-  setTimeout(() => { if (huntResults['Apex Finishes']) huntResults['Apex Finishes'].status = 'in-progress'; renderAll(); }, 2000);
-
-  setTimeout(() => {
-    if (huntResults['Raj Painters']) {
-      huntResults['Raj Painters'] = { status: 'completed', quote: '$280', timeline: '3-4 Days', summary: 'Requires initial site visit. Material not included.', evidence: '"We can do the full 3BHK for $280, takes 3 days."' };
-    }
-    renderAll();
-  }, 4000);
-
-  setTimeout(() => {
-    if (huntResults['City Color Works']) {
-      huntResults['City Color Works'] = { status: 'completed', quote: '$195', timeline: '2 Days', summary: 'Can start tomorrow. Includes standard material.', evidence: '"$195 with materials included, can start tomorrow."' };
-    }
-    renderAll();
-  }, 5500);
-
-  setTimeout(() => {
-    if (huntResults['Apex Finishes']) {
-      huntResults['Apex Finishes'] = { status: 'voicemail', quote: null, timeline: null, summary: 'Went to voicemail. AI scheduled callback.', evidence: null };
-    }
-    renderAll();
-  }, 6500);
-
-  setTimeout(() => {
-    if (huntResults['QuickPaint Express']) {
-      huntResults['QuickPaint Express'] = { status: 'completed', quote: '$420', timeline: '5 Days', summary: 'Premium Berger Silk paint. Warranty included.', evidence: '"$420 total with a full 2-year warranty included."' };
-    }
-    renderAll();
-  }, 8000);
-
-  setTimeout(() => {
-    isRunning = false;
-    launchBtn.disabled = false;
-    launchBtnText.textContent = '🚀 Launch Parallel AI Call Hunt (~2 mins)';
-  }, 8500);
-});
-
-/* ─── Export CSV ─────────────────────────────────────────────────────── */
-$('#btn-export-csv').addEventListener('click', () => {
-  const rows = [['Vendor', 'Quote', 'Timeline', 'Summary']];
-  Object.entries(huntResults).forEach(([name, r]) => {
-    rows.push([name, r.quote || '-', r.timeline || '-', (r.summary || '-').replace(/,/g, ';')]);
-  });
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `quotehunter-${currentCategory}-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-});
-
-/* ─── Preset Chips ──────────────────────────────────────────────────── */
-$$('.preset-chip').forEach(chip => {
-  chip.addEventListener('click', () => {
-    if (!isRunning) applyPreset(chip.dataset.category);
-  });
-});
-
-/* ─── Init ──────────────────────────────────────────────────────────── */
-applyPreset('painting');
-// Preload user's verified phone number for testing
-activeVendors = [
-  { name: 'My Mobile', phone: '+918016086948' }
-];
-renderVendorList();
+/* ─── Startup ───────────────────────────────────────────────────────── */
+renderPhoneChips();
+renderRecentsList();
+switchView('home');

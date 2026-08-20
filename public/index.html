@@ -1,431 +1,450 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>QuoteHunter Dashboard</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "on-surface-variant": "#c7c4d7",
-                        "tertiary": "#d0bcff",
-                        "secondary-fixed": "#6ffbbe",
-                        "surface-container-lowest": "#0b0f10",
-                        "on-tertiary-container": "#340080",
-                        "on-primary": "#1000a9",
-                        "secondary-fixed-dim": "#4edea3",
-                        "outline-variant": "#464554",
-                        "surface-container": "#1d2022",
-                        "inverse-on-surface": "#2d3133",
-                        "tertiary-fixed-dim": "#d0bcff",
-                        "surface-variant": "#323537",
-                        "surface-dim": "#101415",
-                        "tertiary-container": "#a078ff",
-                        "on-error": "#690005",
-                        "on-surface": "#e0e3e5",
-                        "surface": "#101415",
-                        "surface-bright": "#363a3b",
-                        "on-secondary": "#003824",
-                        "error-container": "#93000a",
-                        "on-tertiary-fixed-variant": "#5516be",
-                        "on-background": "#e0e3e5",
-                        "surface-tint": "#c0c1ff",
-                        "primary-fixed": "#e1e0ff",
-                        "background": "#101415",
-                        "on-secondary-fixed": "#002113",
-                        "secondary": "#4edea3",
-                        "on-tertiary-fixed": "#23005c",
-                        "tertiary-fixed": "#e9ddff",
-                        "error": "#ffb4ab",
-                        "on-secondary-container": "#00311f",
-                        "on-tertiary": "#3c0091",
-                        "outline": "#908fa0",
-                        "surface-container-low": "#191c1e",
-                        "primary": "#c0c1ff",
-                        "surface-container-highest": "#323537",
-                        "on-primary-fixed-variant": "#2f2ebe",
-                        "inverse-surface": "#e0e3e5",
-                        "surface-container-high": "#272a2c",
-                        "on-primary-fixed": "#07006c",
-                        "primary-fixed-dim": "#c0c1ff",
-                        "on-secondary-fixed-variant": "#005236",
-                        "inverse-primary": "#494bd6",
-                        "on-primary-container": "#0d0096",
-                        "secondary-container": "#00a572",
-                        "on-error-container": "#ffdad6",
-                        "primary-container": "#8083ff"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                    "spacing": {
-                        "stack-md": "16px",
-                        "margin-desktop": "40px",
-                        "gutter": "24px",
-                        "margin-mobile": "16px",
-                        "stack-sm": "8px",
-                        "stack-lg": "32px",
-                        "container-max": "1440px"
-                    },
-                    "fontFamily": {
-                        "body-md": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "label-sm": ["Inter"],
-                        "headline-md": ["Inter"],
-                        "display-lg": ["Inter"],
-                        "data-mono": ["JetBrains Mono"],
-                        "display-lg-mobile": ["Inter"]
-                    },
-                    "fontSize": {
-                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
-                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
-                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
-                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
-                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
-                        "data-mono": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
-                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
-                    }
-                }
-            }
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>CALL-E - AI Negotiation Hub</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: {
+            "sans": ["Plus Jakarta Sans", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+          }
         }
-    </script>
-<style>
-        .glass-panel {
-            background-color: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(248, 250, 252, 0.1);
-        }
-        .primary-gradient-btn {
-            background: linear-gradient(135deg, #6366F1, #8B5CF6);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px 0 rgba(99, 102, 241, 0.15);
-        }
-        .primary-gradient-btn:hover { opacity: 0.92; }
-        .primary-gradient-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .ai-pulse {
-            animation: pulse-glow 2s infinite;
-        }
-        @keyframes pulse-glow {
-            0% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(78, 222, 163, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0); }
-        }
-        .waveform {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            height: 12px;
-        }
-        .waveform div {
-            width: 2px;
-            background-color: #6ffbbe;
-            animation: wave 1s infinite ease-in-out;
-            border-radius: 1px;
-        }
-        .waveform div:nth-child(2) { animation-delay: -0.8s; }
-        .waveform div:nth-child(3) { animation-delay: -0.6s; }
-        .waveform div:nth-child(4) { animation-delay: -0.4s; }
-        .waveform div:nth-child(5) { animation-delay: -0.2s; }
-        @keyframes wave {
-            0%, 100% { height: 4px; }
-            50% { height: 12px; }
-        }
-        .hidden-el { display: none !important; }
+      }
+    }
+  </script>
 
-        /* ── Custom Scrollbars ── */
-        * {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(192, 193, 255, 0.15) transparent;
-        }
-        *:hover {
-            scrollbar-color: rgba(192, 193, 255, 0.3) transparent;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(192, 193, 255, 0.15);
-            border-radius: 999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(192, 193, 255, 0.35);
-            box-shadow: 0 0 8px rgba(192, 193, 255, 0.2);
-        }
-        ::-webkit-scrollbar-corner {
-            background: transparent;
-        }
-    </style>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .audio-bar {
+      width: 3px;
+      height: 12px;
+      background-color: #006c49;
+      border-radius: 2px;
+      display: inline-block;
+      margin: 0 1px;
+      animation: bounce 1s infinite ease-in-out;
+    }
+    .audio-bar:nth-child(1) { animation-delay: -0.8s; height: 8px; }
+    .audio-bar:nth-child(2) { animation-delay: -0.6s; height: 16px; }
+    .audio-bar:nth-child(3) { animation-delay: -0.4s; height: 20px; }
+    .audio-bar:nth-child(4) { animation-delay: -0.2s; height: 16px; }
+    .audio-bar:nth-child(5) { animation-delay: 0s; height: 10px; }
+
+    @keyframes bounce {
+      0%, 100% { transform: scaleY(0.45); }
+      50% { transform: scaleY(1); }
+    }
+    
+    .pulse-ring {
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 108, 73, 0.4); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 108, 73, 0); }
+      100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 108, 73, 0); }
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+    .modal-card {
+      background: #FFFFFF;
+      border-radius: 1.25rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border: 1px solid #e5e7eb;
+      max-width: 520px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .hidden-view {
+      display: none !important;
+    }
+  </style>
 </head>
-<body class="bg-[#0B0F19] text-on-surface font-body-md min-h-screen relative overflow-x-hidden">
 
-<!-- TopAppBar (EXACT Stitch) -->
-<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/60 backdrop-blur-xl border-b border-white/10 shadow-[0_0_20px_0_rgba(192,193,255,0.15)]">
-<div class="flex items-center gap-4">
-<div class="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_12px_rgba(99,102,241,0.3)]">
-  <span class="material-symbols-outlined text-lg">radar</span>
-</div>
-<span class="font-headline-md text-headline-md font-bold text-primary">QuoteHunter</span>
-</div>
-<nav class="hidden md:flex gap-8">
-<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors active:scale-95" href="#">Dashboard</a>
-<a class="font-body-md text-body-md text-primary border-b-2 border-primary hover:text-primary transition-colors active:scale-95" href="#">Active Radars</a>
-<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors active:scale-95" href="#">Quote Matrix</a>
-<a id="btn-sample-demo" class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors active:scale-95 cursor-pointer">▶ Demo</a>
-</nav>
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-2 bg-secondary/10 px-3 py-1.5 rounded-full border border-secondary/20" id="calle-status-badge">
-<div class="w-2 h-2 rounded-full bg-secondary ai-pulse"></div>
-<span class="font-label-sm text-label-sm text-secondary" id="calle-status-text">CALL-E Connected</span>
-</div>
+<body class="bg-white text-gray-900 antialiased h-screen overflow-hidden flex selection:bg-gray-900 selection:text-white">
 
-<div class="flex items-center gap-4 text-on-surface-variant">
-<span class="material-symbols-outlined hover:text-primary cursor-pointer transition-colors">language</span>
-<span class="material-symbols-outlined hover:text-primary cursor-pointer transition-colors">account_balance_wallet</span>
-<span class="material-symbols-outlined hover:text-primary cursor-pointer transition-colors">notifications</span>
-</div>
-</div>
-</header>
-
-<div class="flex pt-16 min-h-screen">
-<!-- SideNavBar (EXACT Stitch) -->
-<aside class="hidden md:flex flex-col p-6 gap-stack-md fixed left-0 top-16 h-[calc(100vh-4rem)] w-[280px] bg-surface-container/60 backdrop-filter backdrop-blur-xl border-r border-white/10 z-40 overflow-y-auto">
-<div class="mb-4">
-<h2 class="font-headline-md text-headline-md text-on-surface mb-1" data-i18n="panel_title">New Quote Hunt</h2>
-<p class="font-label-sm text-label-sm text-on-surface-variant" data-i18n="panel_subtitle">Define parameters for AI Agents</p>
-</div>
-
-<form id="hunt-form" class="space-y-4 flex-1 flex flex-col">
-<div>
-<label class="font-label-sm text-label-sm text-on-surface-variant block mb-2" data-i18n="label_category">Category</label>
-<div class="flex flex-wrap gap-2" id="preset-chips">
-<span class="preset-chip bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full font-label-sm text-label-sm cursor-pointer active" data-category="painting" data-i18n="preset_painters">Painting</span>
-<span class="preset-chip bg-surface-variant text-on-surface-variant border border-white/5 px-3 py-1 rounded-full font-label-sm text-label-sm cursor-pointer hover:bg-white/5" data-category="plumbing" data-i18n="preset_plumbers">Plumbing</span>
-<span class="preset-chip bg-surface-variant text-on-surface-variant border border-white/5 px-3 py-1 rounded-full font-label-sm text-label-sm cursor-pointer hover:bg-white/5" data-category="electrical" data-i18n="preset_electricians">Electrical</span>
-</div>
-</div>
-<div>
-<label class="font-label-sm text-label-sm text-on-surface-variant block mb-2" data-i18n="label_job_desc">Job Description</label>
-<textarea id="job-desc" class="w-full bg-[#0B0F19]/40 border border-white/10 rounded-lg p-3 font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none h-24 placeholder-on-surface-variant/50"></textarea>
-</div>
-<div>
-<div class="flex justify-between items-center mb-2">
-  <div class="flex items-center gap-2">
-    <label class="font-label-sm text-label-sm text-on-surface-variant">Target Vendors</label>
-    <span id="vendor-count-tag" class="text-[10px] font-data-mono px-1.5 py-0.2 rounded bg-white/5 text-on-surface-variant border border-white/10">0</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <button type="button" id="btn-clear-vendors" class="font-label-sm text-[11px] text-error/80 hover:text-error cursor-pointer transition-colors" title="Remove all dummy numbers">Clear All</button>
-    <span class="text-white/20 text-xs">|</span>
-    <button type="button" id="btn-add-vendor" class="font-label-sm text-label-sm text-primary cursor-pointer hover:underline flex items-center gap-0.5">+ Add</button>
-  </div>
-</div>
-<div class="bg-[#0B0F19]/40 rounded-lg border border-white/5 overflow-hidden">
-<table class="w-full text-left font-data-mono text-data-mono text-xs">
-<tbody id="vendor-list" class="divide-y divide-white/5">
-<!-- Dynamic vendor rows with remove buttons -->
-</tbody>
-</table>
-</div>
-</div>
-
-<!-- Execution mode -->
-<div class="bg-[#0B0F19]/30 rounded-lg p-3 border border-white/5 space-y-1.5">
-<label class="font-label-sm text-label-sm text-on-surface-variant block" data-i18n="label_execution">Execution</label>
-<label class="flex items-center gap-2 cursor-pointer text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">
-  <input type="radio" name="exec-mode" value="live" id="radio-live" checked class="accent-primary w-3 h-3">
-  <span data-i18n="radio_live">📞 Live CALL-E</span>
-</label>
-<label class="flex items-center gap-2 cursor-pointer text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">
-  <input type="radio" name="exec-mode" value="simulate" id="radio-simulate" class="accent-primary w-3 h-3">
-  <span data-i18n="radio_simulate">⚡ Interactive Demo</span>
-</label>
-</div>
-
-<!-- Preflight Safety Gate -->
-<div class="bg-[#0B0F19]/40 rounded-lg p-3 border border-white/5 space-y-1.5 font-label-sm text-label-sm">
-  <div class="flex items-center justify-between text-on-surface-variant text-[11px] mb-1">
-    <span class="font-semibold text-on-surface uppercase tracking-wider flex items-center gap-1">
-      <span class="material-symbols-outlined text-secondary text-xs">verified_user</span>
-      Preflight Safety
-    </span>
-    <span class="text-secondary text-[10px] bg-secondary/10 px-1.5 py-0.5 rounded border border-secondary/20 font-bold">ACTIVE</span>
-  </div>
-  <div class="space-y-1 text-[11px] text-on-surface-variant/80">
-    <div class="flex items-center gap-1.5">
-      <span class="material-symbols-outlined text-secondary text-xs">check_circle</span>
-      <span>AI Caller Disclosed</span>
+  <!-- ─── SideNavBar ─────────────────────────────────────────────────── -->
+  <aside class="bg-[#f8f9fa] text-gray-700 w-64 fixed left-0 top-0 bottom-0 border-r border-[#e5e7eb] flex flex-col h-full py-6 px-4 z-40 select-none">
+    
+    <!-- Brand Header -->
+    <div class="mb-6 flex items-center gap-3 px-1">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white flex items-center justify-center shadow-sm shrink-0">
+        <span class="material-symbols-outlined text-[22px]">smart_toy</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-black tracking-tight leading-tight">CALL-E</h1>
+        <p class="text-xs text-gray-400 font-medium">AI Negotiation Hub</p>
+      </div>
     </div>
-    <div class="flex items-center gap-1.5">
-      <span class="material-symbols-outlined text-secondary text-xs">check_circle</span>
-      <span>Idempotency Deduplication</span>
+
+    <!-- CTA Button -->
+    <button id="btn-new-chat" class="bg-black text-white text-sm font-semibold rounded-full py-2.5 px-4 mb-5 w-full flex justify-center items-center gap-2 hover:bg-gray-800 transition-all shadow-sm">
+      <span class="material-symbols-outlined text-lg">add</span>
+      <span>New Negotiation</span>
+    </button>
+
+    <!-- Navigation Links -->
+    <nav class="flex-1 overflow-y-auto space-y-1 pr-1">
+      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-600 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
+        <span class="material-symbols-outlined text-lg text-gray-400">search</span>
+        <span class="text-sm">Search</span>
+      </a>
+
+      <!-- Recents Section with Dynamic Thread History -->
+      <div class="pt-2 pb-1">
+        <div class="flex items-center justify-between px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
+          <span class="flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">history</span>
+            <span>Recents</span>
+          </span>
+          <span class="text-[10px] font-mono font-normal bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full" id="recents-badge">0</span>
+        </div>
+        
+        <!-- Recents List -->
+        <div class="mt-1 space-y-1" id="recents-list">
+          <p class="text-xs text-gray-400 italic px-3 py-2" id="no-recents-msg">No recent negotiations</p>
+        </div>
+      </div>
+
+      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-600 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
+        <span class="material-symbols-outlined text-lg text-gray-400">call</span>
+        <span class="text-sm">Call records</span>
+      </a>
+    </nav>
+
+    <!-- Footer Links -->
+    <div class="mt-auto border-t border-[#e5e7eb] pt-4 space-y-1">
+      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
+        <span class="material-symbols-outlined text-lg">settings</span>
+        <span class="text-sm">Settings</span>
+      </a>
+      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
+        <span class="material-symbols-outlined text-lg">help</span>
+        <span class="text-sm">Support</span>
+      </a>
     </div>
-    <div class="flex items-center gap-1.5">
-      <span class="material-symbols-outlined text-secondary text-xs">check_circle</span>
-      <span>Human Booking Authority</span>
+  </aside>
+
+  <!-- ─── Main Content Viewport ──────────────────────────────────────── -->
+  <div class="ml-64 flex-1 flex flex-col h-screen relative bg-white">
+    
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- VIEW 1: HOME VIEW (Vertically & Horizontally Center-Aligned)      -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <main id="view-home" class="flex-1 overflow-y-auto p-6 sm:p-12 flex flex-col justify-center items-center">
+      <div class="max-w-3xl w-full mx-auto space-y-7 -mt-10">
+        
+        <!-- Hero Header (Clean Title, Subtitle moved to hint) -->
+        <header class="text-center">
+          <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+            Let CALL-E negotiate quotes for you
+          </h2>
+        </header>
+
+        <!-- Central Prompt Card -->
+        <form id="hunt-form" class="bg-white border border-[#e5e7eb] rounded-2xl p-5 sm:p-6 shadow-sm relative focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+          <textarea 
+            id="job-desc" 
+            class="w-full h-28 bg-transparent border-none resize-none focus:ring-0 text-base text-gray-900 placeholder:text-gray-400 outline-none leading-relaxed" 
+            placeholder="Describe your request, and our AI will call vendors to secure the best price."
+          ></textarea>
+          
+          <div class="flex items-center justify-between border-t border-[#e5e7eb] pt-3.5 mt-2">
+            <div class="flex items-center gap-2 flex-wrap" id="selected-numbers-container">
+              <button type="button" onclick="openAddVendorModal()" class="w-8 h-8 rounded-full border border-[#e5e7eb] flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="Add Phone Number">
+                <span class="material-symbols-outlined text-lg">add</span>
+              </button>
+            </div>
+
+            <!-- Action Button -->
+            <button type="submit" id="btn-launch-hunt" class="bg-black text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-800 transition-transform active:scale-95 shadow-sm" title="Dispatch Autonomous Calls">
+              <span class="material-symbols-outlined text-xl">phone_in_talk</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- 4 Category Presets -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="painting">
+            <span class="text-xl">🎨</span>
+            <span class="text-xs font-semibold text-gray-900">Painting RFQ</span>
+          </button>
+          
+          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="plumbing">
+            <span class="text-xl">🔧</span>
+            <span class="text-xs font-semibold text-gray-900">Plumbing Repair</span>
+          </button>
+          
+          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="electrical">
+            <span class="text-xl">⚡</span>
+            <span class="text-xs font-semibold text-gray-900">Electrical Work</span>
+          </button>
+          
+          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="carpentry">
+            <span class="text-xl">🪚</span>
+            <span class="text-xs font-semibold text-gray-900">Custom Carpentry</span>
+          </button>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- VIEW 2: RECENT THREAD VIEW (Live Swarm & Best Quote Found)        -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="view-thread" class="flex-1 flex flex-col h-full hidden-view">
+      
+      <!-- Top Thread Header Bar -->
+      <header class="bg-[#f8f9fa] h-14 flex items-center px-6 border-b border-[#e5e7eb] shrink-0 z-10">
+        <div class="flex-1 min-w-0">
+          <h2 class="text-sm font-semibold text-gray-900 truncate" id="top-bar-title">
+            Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require
+          </h2>
+        </div>
+      </header>
+
+      <!-- Scrollable Thread Body -->
+      <div class="flex-1 overflow-y-auto px-6 sm:px-12 py-6 pb-28 space-y-6">
+        
+        <!-- User Prompt Speech Bubble -->
+        <div class="flex justify-end">
+          <div class="bg-[#f3f4f5] text-gray-900 rounded-2xl rounded-tr-none px-5 py-3.5 max-w-2xl border border-[#e5e7eb] shadow-xs">
+            <p class="text-sm leading-relaxed" id="thread-user-prompt">
+              Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require
+            </p>
+          </div>
+        </div>
+
+        <!-- Bento Grid: Swarm & Champion Spotlight -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Left Column: Live Call Swarm -->
+          <div class="lg:col-span-5 space-y-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-emerald-700 text-base">forum</span>
+              <span>Live Call Swarm</span>
+            </h3>
+            
+            <div class="space-y-2.5" id="thread-swarm-list">
+              <!-- Swarm dynamic cards -->
+            </div>
+          </div>
+
+          <!-- Right Column: Best Quote Found Spotlight -->
+          <div class="lg:col-span-7 space-y-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-amber-600 text-base">workspace_premium</span>
+              <span>Best Quote Found</span>
+            </h3>
+
+            <div class="bg-white border border-[#e5e7eb] rounded-2xl p-6 flex flex-col justify-between shadow-sm space-y-5">
+              <div>
+                <!-- Header Info -->
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4 class="text-xl font-bold text-gray-900" id="winner-name">Raj Painters</h4>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
+                        <span class="material-symbols-outlined text-[13px]">verified</span>
+                        <span>Verified Vendor</span>
+                      </span>
+                      <span class="text-xs text-gray-500 font-medium">4.8/5 Rating</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-3xl font-extrabold text-emerald-700 tracking-tight font-mono" id="winner-price">₹11,800</div>
+                    <div class="text-[11px] text-gray-400 font-medium">Includes Materials</div>
+                  </div>
+                </div>
+
+                <!-- Badges Grid -->
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                  <div class="bg-[#f8f9fa] p-2.5 rounded-xl border border-[#e5e7eb] flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-gray-400 text-base">calendar_today</span>
+                    <div>
+                      <div class="text-[10px] text-gray-400 uppercase font-semibold">Timeline</div>
+                      <div class="text-xs font-bold text-gray-900" id="winner-timeline">2 Days</div>
+                    </div>
+                  </div>
+
+                  <div class="bg-[#f8f9fa] p-2.5 rounded-xl border border-[#e5e7eb] flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-gray-400 text-base">verified_user</span>
+                    <div>
+                      <div class="text-[10px] text-gray-400 uppercase font-semibold">Warranty</div>
+                      <div class="text-xs font-bold text-gray-900" id="winner-warranty">1 Year Included</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Quote Box -->
+                <div class="bg-[#f8f9fa] p-3.5 rounded-xl border border-[#e5e7eb] mt-4 relative">
+                  <span class="material-symbols-outlined absolute top-2 right-2 text-gray-300 text-2xl">format_quote</span>
+                  <p class="text-xs text-gray-700 italic leading-relaxed pr-6" id="winner-quote-text">
+                    "Yes, we can do it for 11,800 final price. We'll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."
+                  </p>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex gap-3 pt-2 border-t border-[#e5e7eb]">
+                <button type="button" id="btn-view-transcript" class="flex-1 bg-white border border-[#e5e7eb] text-gray-900 text-xs font-semibold rounded-full py-2.5 hover:bg-gray-50 transition-colors">
+                  View Full Transcript
+                </button>
+                <button type="button" id="btn-book-provider" class="flex-1 bg-black text-white text-xs font-semibold rounded-full py-2.5 hover:bg-gray-800 transition-colors shadow-xs">
+                  Book Provider
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Sticky Bottom Reply Bar -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent">
+        <div class="max-w-3xl mx-auto bg-white border border-[#e5e7eb] rounded-full p-1.5 pl-3 flex items-center gap-2 shadow-md">
+          <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-lg">add</span>
+          </button>
+          <input 
+            type="text" 
+            placeholder="Reply to CALL-E..." 
+            class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-900 placeholder:text-gray-400 outline-none"
+          />
+          <button class="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors shrink-0">
+            <span class="material-symbols-outlined text-base">arrow_upward</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- ─── Grounded Evidence & Full Transcript Modal ──────────────────── -->
+  <div id="evidence-modal" class="modal-overlay hidden-view">
+    <div class="modal-card">
+      <div class="p-4 sm:p-5 border-b border-[#e5e7eb] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🎙️</span>
+          <div>
+            <h3 id="modal-provider-name" class="font-bold text-gray-900 text-base">Raj Painters</h3>
+            <span id="modal-phone" class="text-xs text-gray-500 font-mono">+91 98765 43210</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="modal-confidence-badge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">Verified</span>
+          <button id="btn-close-modal" type="button" class="text-gray-400 hover:text-gray-900 text-2xl p-1 leading-none">&times;</button>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-4 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3 rounded-lg bg-gray-50 border border-[#e5e7eb]">
+            <span class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Locked Price Quote</span>
+            <span id="modal-quote" class="text-lg font-bold text-emerald-700 font-mono">₹11,800</span>
+          </div>
+          <div class="p-3 rounded-lg bg-gray-50 border border-[#e5e7eb]">
+            <span class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Timeline</span>
+            <span id="modal-timeline" class="text-sm font-semibold text-gray-900">2 Days</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold uppercase text-gray-500 block mb-1.5">Verbatim Spoken Audio Evidence</label>
+          <div class="p-3.5 rounded-lg bg-emerald-50/80 border border-emerald-200 text-emerald-950 font-mono text-xs italic" id="modal-evidence-text">
+            "Yes, we can do it for 11,800 final price. We'll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold uppercase text-gray-500 block mb-1.5">Provider Stated Terms</label>
+          <div class="p-3 rounded-lg bg-gray-50 border border-[#e5e7eb] text-gray-700" id="modal-notes-text">
+            Standard emulsion with ceiling primer coat. Free touch-up within 1 year warranty.
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-[#e5e7eb] bg-gray-50 flex items-center justify-between">
+        <button id="btn-copy-evidence" type="button" class="px-4 py-2 border border-[#e5e7eb] bg-white rounded-full text-xs font-semibold hover:bg-gray-100 transition-colors">
+          <span id="copy-btn-label">Copy JSON</span>
+        </button>
+        <button id="btn-confirm-booking" type="button" class="px-4 py-2 bg-black text-white rounded-full text-xs font-semibold hover:bg-gray-800 transition-opacity">
+          Confirm Booking
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<button type="submit" id="btn-launch-hunt" class="mt-auto w-full primary-gradient-btn text-white rounded-lg py-3 px-4 font-label-sm text-label-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
-<span id="launch-btn-text" data-i18n="btn_launch">🚀 Launch Parallel AI Call Hunt (~2 mins)</span>
-</button>
-</form>
-</aside>
+  <!-- ─── Add Phone Number Modal ──────────────────────────────────────── -->
+  <div id="add-vendor-modal" class="modal-overlay hidden-view">
+    <div class="modal-card max-w-md">
+      <div class="p-4 sm:p-5 border-b border-[#e5e7eb] flex items-center justify-between">
+        <h3 class="font-bold text-gray-900 text-base">Add Target Phone Number</h3>
+        <button id="btn-close-add-modal" type="button" class="text-gray-400 hover:text-gray-900 text-2xl p-1 leading-none">&times;</button>
+      </div>
 
-<!-- Main Content Area (EXACT Stitch layout) -->
-<main class="flex-1 md:ml-[280px] p-margin-mobile md:p-margin-desktop">
-<div class="max-w-container-max mx-auto space-y-gutter">
+      <form id="add-vendor-form" class="p-5 space-y-4">
+        <div>
+          <label for="input-vendor-name" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Contact / Business Name</label>
+          <input 
+            id="input-vendor-name" 
+            type="text" 
+            placeholder="e.g. Raj Painters or My Mobile" 
+            required 
+            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-black" 
+            value="My Mobile"
+          />
+        </div>
 
-<!-- Recommendation Banner (Stitch) -->
-<div id="recommendation-banner" class="glass-panel rounded-xl p-4 flex items-start gap-4 border-l-4 border-l-secondary hidden-el">
-<span class="material-symbols-outlined text-secondary text-2xl">lightbulb</span>
-<div>
-<h3 class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-1" data-i18n="banner_tag">💡 Recommendation</h3>
-<p id="recommendation-text" class="font-body-md text-body-md text-on-surface">Awaiting quote results...</p>
-</div>
-</div>
+        <div>
+          <label for="input-vendor-phone" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Phone Number (with Country Code)</label>
+          <input 
+            id="input-vendor-phone" 
+            type="tel" 
+            placeholder="+919876543210 or +14155552671" 
+            required 
+            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm font-mono outline-none focus:border-black" 
+          />
+          <p class="text-[11px] text-gray-500 mt-1">Include country prefix e.g. <strong class="text-gray-900">+91</strong> (India) or <strong class="text-gray-900">+1</strong> (US).</p>
+        </div>
 
-<!-- Live Radar Grid (Stitch) -->
-<div>
-<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-md flex items-center gap-2">
-<span class="material-symbols-outlined text-primary">radar</span>
-<span data-i18n="radar_heading">Live Radar</span>
-<span id="active-count-badge" class="ml-2 font-data-mono text-data-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20 text-xs"></span>
-</h2>
-<div id="radar-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-stack-md">
-<!-- Empty state -->
-<div class="glass-panel rounded-xl p-8 col-span-full text-center">
-  <span class="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-2">phone_in_talk</span>
-  <p class="font-body-md text-body-md text-on-surface-variant" data-i18n="empty_desc">Configure providers and launch an AI hunt to see live calls.</p>
-</div>
-</div>
-</div>
-
-<!-- Bottom Matrix (EXACT Stitch) -->
-<div class="glass-panel rounded-xl overflow-hidden mt-stack-lg">
-<div class="p-5 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
-<span class="material-symbols-outlined text-primary">grid_view</span>
-<span data-i18n="matrix_heading">Quote Matrix</span>
-</h2>
-<button id="btn-export-csv" class="bg-surface-variant hover:bg-surface-bright text-on-surface font-label-sm text-label-sm px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/10" disabled>
-<span class="material-symbols-outlined text-sm">download</span>
-<span data-i18n="btn_export">Export CSV</span>
-</button>
-</div>
-<div class="overflow-x-auto">
-<table class="w-full text-left border-collapse" id="comparison-table">
-<thead>
-<tr class="border-b border-white/5 bg-[#0B0F19]/40">
-<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider" data-i18n="th_provider">Vendor</th>
-<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider" data-i18n="th_price">Price Quote</th>
-<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider" data-i18n="th_avail">Timeline</th>
-<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider" data-i18n="th_terms">Call Summary</th>
-<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right" data-i18n="th_action">Action</th>
-</tr>
-</thead>
-<tbody id="comparison-tbody" class="divide-y divide-white/5 font-body-md text-body-md">
-<tr>
-<td colspan="5" class="p-8 text-center text-on-surface-variant" data-i18n="table_placeholder">Matrix will populate as quotes arrive.</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-
-</div>
-</main>
-</div>
-
-<!-- Grounded Evidence & Transcript Modal -->
-<div id="evidence-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4 hidden-el">
-<div class="glass-panel rounded-2xl max-w-lg w-full p-6 border border-white/15 shadow-2xl">
-<div class="flex justify-between items-center pb-3 border-b border-white/10 mb-4">
-<div class="flex items-center gap-2">
-  <span class="material-symbols-outlined text-primary">verified_user</span>
-  <h3 id="modal-provider-name" class="font-bold text-on-surface text-base"></h3>
-</div>
-<div class="flex items-center gap-2">
-  <span id="modal-confidence-badge" class="font-label-sm text-[10px] bg-secondary/10 text-secondary border border-secondary/30 px-2 py-0.5 rounded-full font-bold">Verified Span</span>
-  <button id="btn-close-modal" class="text-on-surface-variant hover:text-on-surface text-xl cursor-pointer transition-colors">&times;</button>
-</div>
-</div>
-<div class="space-y-3.5">
-<div class="grid grid-cols-3 gap-2 bg-[#0B0F19]/60 p-3 rounded-lg font-data-mono text-data-mono text-xs border border-white/5">
-  <div><span class="text-on-surface-variant/60 text-[10px] block uppercase">PHONE</span><span id="modal-phone" class="text-on-surface text-xs truncate block"></span></div>
-  <div><span class="text-on-surface-variant/60 text-[10px] block uppercase">PRICE QUOTE</span><span id="modal-quote" class="text-secondary font-bold text-sm"></span></div>
-  <div><span class="text-on-surface-variant/60 text-[10px] block uppercase">TIMELINE</span><span id="modal-timeline" class="text-on-surface text-xs"></span></div>
-</div>
-<div>
-  <div class="flex justify-between items-center mb-1">
-    <label class="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
-      <span class="material-symbols-outlined text-primary text-xs">record_voice_over</span>
-      Verbatim Spoken Evidence:
-    </label>
-    <span class="text-[10px] font-data-mono text-secondary">CALL-E Transcript Span</span>
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="btn-cancel-add-modal" type="button" class="px-4 py-2 border border-gray-300 rounded-full text-xs font-semibold hover:bg-gray-100 transition-colors">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-black text-white rounded-full text-xs font-semibold hover:bg-gray-800 transition-opacity">Add to Queue</button>
+        </div>
+      </form>
+    </div>
   </div>
-  <p id="modal-evidence-text" class="italic text-secondary bg-[#0B0F19]/90 p-3 rounded-lg border border-secondary/25 font-data-mono text-data-mono text-xs leading-relaxed"></p>
-</div>
-<div>
-  <label class="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider block mb-1">Call Notes & Stated Terms:</label>
-  <p id="modal-notes-text" class="text-on-surface bg-[#0B0F19]/50 p-3 rounded-lg text-xs leading-relaxed border border-white/5"></p>
-</div>
-<div class="flex items-center justify-between pt-3 border-t border-white/10">
-  <button id="btn-copy-evidence" type="button" class="bg-surface-variant hover:bg-surface-bright text-on-surface px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-white/10">
-    <span class="material-symbols-outlined text-sm">content_copy</span>
-    <span id="copy-btn-label">Copy Evidence Packet</span>
-  </button>
-  <button id="btn-confirm-booking" type="button" class="primary-gradient-btn text-white px-5 py-2 rounded-lg text-xs font-bold transition-opacity hover:opacity-90 flex items-center gap-1.5 shadow-lg">
-    <span class="material-symbols-outlined text-sm">check_circle</span>
-    <span>Confirm & Book Provider</span>
-  </button>
-</div>
-</div>
-</div>
-</div>
 
-<!-- Add Vendor Modal -->
-<div id="add-vendor-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4 hidden-el">
-<div class="glass-panel rounded-2xl max-w-md w-full p-6 relative border border-white/15 shadow-2xl">
-<div class="flex justify-between items-center pb-3 border-b border-white/10 mb-4">
-<div class="flex items-center gap-2">
-  <span class="material-symbols-outlined text-primary text-xl">phone_forwarded</span>
-  <h3 class="font-bold text-on-surface text-base">Add Phone Number to Call</h3>
-</div>
-<button id="btn-close-add-modal" type="button" class="text-on-surface-variant hover:text-on-surface text-xl cursor-pointer transition-colors">&times;</button>
-</div>
-<form id="add-vendor-form" class="space-y-4">
-<div>
-  <label class="font-label-sm text-label-sm text-on-surface-variant block mb-1">Contact / Vendor Name</label>
-  <input id="input-vendor-name" type="text" placeholder="e.g. My Mobile" required class="w-full bg-[#0B0F19]/60 border border-white/15 rounded-lg p-2.5 font-body-md text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" value="My Mobile" />
-</div>
-<div>
-  <label class="font-label-sm text-label-sm text-on-surface-variant block mb-1">Phone Number (with Country Code)</label>
-  <input id="input-vendor-phone" type="tel" placeholder="+919876543210 or +12345678900" required class="w-full bg-[#0B0F19]/60 border border-white/15 rounded-lg p-2.5 font-data-mono text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
-  <span class="text-[11px] text-on-surface-variant/70 mt-1 block">💡 Include international country prefix, e.g. <strong class="text-primary">+91</strong> (India) or <strong class="text-primary">+1</strong> (US).</span>
-</div>
-<div class="flex justify-end gap-3 pt-2">
-  <button id="btn-cancel-add-modal" type="button" class="px-4 py-2 rounded-lg bg-surface-variant text-on-surface hover:bg-surface-bright text-xs font-bold transition-colors">Cancel</button>
-  <button type="submit" class="primary-gradient-btn text-white px-5 py-2 rounded-lg text-xs font-bold transition-opacity hover:opacity-90 flex items-center gap-1.5">
-    <span class="material-symbols-outlined text-sm">add_call</span>
-    <span>Add Number</span>
-  </button>
-</div>
-</form>
-</div>
-</div>
-
-<script src="/app.js"></script>
-</body></html>
+  <script src="/app.js"></script>
+</body>
+</html>
