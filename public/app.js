@@ -2,8 +2,40 @@
    CALL-E Negotiation Hub — State Manager & Recent Threads Controller
    ========================================================================== */
 
-/* ─── Service Presets ────────────────────────────────────────────────── */
+/* ─── Service & Negotiation Presets ──────────────────────────────────── */
 const PRESETS = {
+  personal: {
+    name: 'Personal Message',
+    desc: 'Call +918016086948 with a personal message regarding the project update and ask for confirmation.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+    ],
+  },
+  business: {
+    name: 'Ask a Business',
+    desc: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Raj Painters', phone: '+919876543210' },
+      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+    ],
+  },
+  booking: {
+    name: 'Book or Reschedule',
+    desc: 'Call service provider to schedule an on-site visit for this Friday morning or reschedule to the earliest available slot.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+    ],
+  },
+  followup: {
+    name: 'Follow Up',
+    desc: 'Call vendor to follow up on the previous quote, negotiate for the best discount with materials included, and ask for timeline confirmation.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Raj Painters', phone: '+919876543210' },
+    ],
+  },
   painting: {
     name: 'Painting RFQ',
     desc: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
@@ -44,11 +76,7 @@ const PRESETS = {
 
 /* ─── App State ──────────────────────────────────────────────────────── */
 let currentCategory = 'painting';
-let activeVendors = [
-  { name: 'My Mobile', phone: '+918016086948' },
-  { name: 'Raj Painters', phone: '+919876543210' },
-  { name: 'Urban Colors Ltd.', phone: '+918765432109' },
-];
+let activeVendors = [];
 
 let recentThreads = [
   {
@@ -131,6 +159,17 @@ function switchView(viewName, threadData = null) {
       threadUserPrompt.textContent = threadData.prompt;
     }
 
+    const statusBadge = $('#thread-status-badge');
+    if (statusBadge) {
+      if (threadData.isLive) {
+        statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-medium';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span><span>Live Swarm</span>';
+      } else {
+        statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200 text-[11px] font-medium';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span>Completed</span>';
+      }
+    }
+
     renderThreadSwarm(threadData.results);
     renderWinnerCard(threadData.results);
     renderRecentsList();
@@ -150,7 +189,7 @@ function renderRecentsList() {
   }
 
   if (recentThreads.length === 0) {
-    recentsList.innerHTML = `<p class="text-xs text-gray-400 italic px-3 py-2">No recent negotiations</p>`;
+    recentsList.innerHTML = `<p class="text-xs text-gray-400 italic px-2.5 py-2">No recent negotiations</p>`;
     return;
   }
 
@@ -160,22 +199,95 @@ function renderRecentsList() {
 
     return `
       <div 
-        class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+        class="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
           isActive 
-            ? 'bg-emerald-50/90 text-emerald-900 font-bold border-l-2 border-emerald-600 shadow-xs' 
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            ? 'bg-gray-200/70 text-gray-900 font-medium' 
+            : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900 font-normal'
         }" 
         onclick="loadThread(${idx})"
       >
-        <div class="flex items-center gap-2 truncate">
-          <span class="w-2 h-2 rounded-full ${t.isLive ? 'bg-amber-500 animate-pulse' : 'bg-emerald-600'} shrink-0"></span>
-          <span class="truncate">${escapeHtml(displayTitle)}</span>
+        <div class="flex items-center gap-2 truncate flex-1 min-w-0 pr-1">
+          <span class="w-1.5 h-1.5 rounded-full ${t.isLive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'} shrink-0"></span>
+          <span class="truncate" id="thread-title-${idx}">${escapeHtml(displayTitle)}</span>
         </div>
-        <span class="text-gray-400 hover:text-gray-700 ml-1 text-xs">•••</span>
+
+        <!-- 3-Dot Options Trigger (Appears on Hover) -->
+        <div class="relative shrink-0" onclick="event.stopPropagation()">
+          <button 
+            type="button" 
+            onclick="toggleRecentMenu(event, ${idx})"
+            class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-700 p-1 hover:bg-gray-200/80 rounded-md transition-all flex items-center justify-center cursor-pointer"
+            title="Options"
+          >
+            <span class="material-symbols-outlined text-[16px] leading-none font-light">more_horiz</span>
+          </button>
+
+          <!-- Floating Dropdown Menu -->
+          <div id="recent-menu-${idx}" class="recent-menu-dropdown hidden-view absolute right-0 top-6 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 w-28 text-xs font-normal text-gray-700 backdrop-blur-sm">
+            <button type="button" onclick="renameThread(event, ${idx})" class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors">
+              <span class="material-symbols-outlined text-[14px] text-gray-400 font-light">edit</span>
+              <span>Rename</span>
+            </button>
+            <button type="button" onclick="deleteThread(event, ${idx})" class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-rose-50 text-rose-600 transition-colors">
+              <span class="material-symbols-outlined text-[14px] text-rose-500 font-light">delete</span>
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>
       </div>
     `;
   }).join('');
 }
+
+window.toggleRecentMenu = function(e, idx) {
+  e.stopPropagation();
+  const currentMenu = document.getElementById(`recent-menu-${idx}`);
+  const isCurrentlyOpen = currentMenu && !currentMenu.classList.contains('hidden-view');
+
+  // Close all open menus
+  document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
+
+  if (!isCurrentlyOpen && currentMenu) {
+    currentMenu.classList.remove('hidden-view');
+  }
+};
+
+window.renameThread = function(e, idx) {
+  e.stopPropagation();
+  document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
+  const thread = recentThreads[idx];
+  if (!thread) return;
+
+  const newTitle = prompt('Rename negotiation thread:', thread.title);
+  if (newTitle && newTitle.trim()) {
+    thread.title = newTitle.trim();
+    renderRecentsList();
+    if (activeThread && activeThread.id === thread.id && topBarTitle) {
+      topBarTitle.textContent = thread.title;
+    }
+  }
+};
+
+window.deleteThread = function(e, idx) {
+  e.stopPropagation();
+  document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
+  const thread = recentThreads[idx];
+  if (!thread) return;
+
+  if (confirm(`Delete negotiation thread "${thread.title}"?`)) {
+    const isDeletedActive = activeThread && activeThread.id === thread.id;
+    recentThreads.splice(idx, 1);
+    renderRecentsList();
+    if (isDeletedActive) {
+      switchView('home');
+    }
+  }
+};
+
+// Close all 3-dot dropdowns when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
+});
 
 window.loadThread = function(idx) {
   const t = recentThreads[idx];
@@ -189,16 +301,16 @@ function renderPhoneChips() {
   if (!selectedNumbersContainer) return;
 
   const chipsHtml = activeVendors.map((v, idx) => `
-    <div class="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full border border-[#e5e7eb] text-xs font-medium text-gray-700">
-      <span class="material-symbols-outlined text-xs text-gray-400">phone</span>
+    <div class="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200 text-xs font-normal text-gray-700">
+      <span class="material-symbols-outlined text-[13px] text-gray-400">call</span>
       <span>${escapeHtml(v.phone)}</span>
-      <button type="button" onclick="removeVendor(${idx})" class="text-gray-400 hover:text-red-500 ml-1 leading-none">&times;</button>
+      <button type="button" onclick="removeVendor(${idx})" class="text-gray-400 hover:text-red-500 ml-1 leading-none text-sm">&times;</button>
     </div>
   `).join('');
 
   selectedNumbersContainer.innerHTML = `
-    <button type="button" onclick="openAddVendorModal()" class="w-8 h-8 rounded-full border border-[#e5e7eb] flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="Add Phone Number">
-      <span class="material-symbols-outlined text-lg">add</span>
+    <button type="button" onclick="openAddVendorModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors" title="Add Phone Number">
+      <span class="material-symbols-outlined text-[20px] font-light">add</span>
     </button>
     ${chipsHtml}
   `;
@@ -215,7 +327,7 @@ window.openAddVendorModal = function() {
   if (isRunning) return;
   const nameInput = $('#input-vendor-name');
   const phoneInput = $('#input-vendor-phone');
-  if (nameInput) nameInput.value = `Vendor #${activeVendors.length + 1}`;
+  if (nameInput) nameInput.value = '';
   if (phoneInput) phoneInput.value = '';
   addVendorModal?.classList.remove('hidden-view');
   setTimeout(() => phoneInput?.focus(), 50);
@@ -230,7 +342,6 @@ $('#btn-cancel-add-modal')?.addEventListener('click', closeAddVendorModal);
 
 $('#add-vendor-form')?.addEventListener('submit', (e) => {
   e.preventDefault();
-  const name = $('#input-vendor-name').value.trim() || `Vendor #${activeVendors.length + 1}`;
   let phone = $('#input-vendor-phone').value.trim();
 
   if (!phone) {
@@ -241,12 +352,14 @@ $('#add-vendor-form')?.addEventListener('submit', (e) => {
     phone = '+' + phone;
   }
 
+  const name = $('#input-vendor-name').value.trim() || phone;
+
   activeVendors.push({ name, phone });
   renderPhoneChips();
   closeAddVendorModal();
 });
 
-/* ─── Category Preset Switcher ──────────────────────────────────────── */
+/* ─── Category & Action Preset Switcher ─────────────────────────────── */
 function applyPreset(cat) {
   if (!PRESETS[cat]) return;
   currentCategory = cat;
@@ -254,11 +367,11 @@ function applyPreset(cat) {
 
   $$('.preset-chip').forEach(chip => {
     if (chip.dataset.category === cat) {
-      chip.classList.add('border-black', 'bg-gray-50/80');
-      chip.classList.remove('border-[#e5e7eb]');
+      chip.classList.add('border-gray-800', 'bg-gray-50');
+      chip.classList.remove('border-[#d6dbe1]');
     } else {
-      chip.classList.remove('border-black', 'bg-gray-50/80');
-      chip.classList.add('border-[#e5e7eb]');
+      chip.classList.remove('border-gray-800', 'bg-gray-50');
+      chip.classList.add('border-[#d6dbe1]');
     }
   });
 
@@ -266,9 +379,6 @@ function applyPreset(cat) {
     jobDesc.value = preset.desc;
     jobDesc.focus();
   }
-
-  activeVendors = preset.vendors.map(v => ({ ...v }));
-  renderPhoneChips();
 }
 
 $$('.preset-chip').forEach(chip => {
@@ -291,19 +401,38 @@ function renderThreadSwarm(results) {
   }
 
   threadSwarmList.innerHTML = entries.map(([name, r]) => {
-    const isLive = ['in-call', 'in-progress', 'ringing', 'dialing'].includes(r.status);
+    const isLive = ['in-call', 'in-progress', 'ringing', 'dialing', 'initializing', 'analyzing'].includes(r.status);
     const isCompleted = ['completed', 'quoted'].includes(r.status);
 
     if (isLive) {
+      let statusLabel = 'Negotiating...';
+      let ringColor = 'bg-emerald-600';
+      if (r.status === 'initializing') {
+        statusLabel = 'Initializing Voice AI...';
+        ringColor = 'bg-blue-500';
+      } else if (r.status === 'dialing') {
+        statusLabel = 'Connecting Carrier...';
+        ringColor = 'bg-indigo-500';
+      } else if (r.status === 'ringing') {
+        statusLabel = 'Phone Ringing...';
+        ringColor = 'bg-amber-500';
+      } else if (r.status === 'in-call' || r.status === 'in-progress') {
+        statusLabel = 'Live On-Call...';
+        ringColor = 'bg-emerald-600';
+      } else if (r.status === 'analyzing') {
+        statusLabel = 'Extracting Quote...';
+        ringColor = 'bg-purple-500';
+      }
+
       return `
-        <div class="bg-white p-3.5 rounded-xl border border-[#e5e7eb] flex items-center justify-between shadow-xs">
+        <div class="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between shadow-xs">
           <div class="flex items-center gap-3">
-            <div class="w-2.5 h-2.5 rounded-full bg-emerald-600 pulse-ring"></div>
+            <div class="w-2.5 h-2.5 rounded-full ${ringColor} pulse-ring"></div>
             <div>
-              <h4 class="text-xs font-bold text-gray-900">${escapeHtml(name)}</h4>
+              <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
               <p class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                 <span class="material-symbols-outlined text-[13px]">timer</span>
-                <span>Negotiating...</span>
+                <span>${escapeHtml(statusLabel)}</span>
               </p>
             </div>
           </div>
@@ -319,28 +448,30 @@ function renderThreadSwarm(results) {
 
     if (isCompleted) {
       return `
-        <div class="bg-white p-3.5 rounded-xl border border-[#e5e7eb] opacity-90 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onclick="openModal('${escapeHtml(name)}')">
+        <div class="bg-white p-3.5 rounded-xl border border-gray-200 opacity-95 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors shadow-2xs" onclick="openModal('${escapeHtml(name)}')">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
             <div>
-              <h4 class="text-xs font-bold text-gray-900">${escapeHtml(name)}</h4>
-              <p class="text-[11px] text-gray-500 mt-0.5 font-mono">Completed • ${escapeHtml(r.quote || 'Quoted')}</p>
+              <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
+              <p class="text-[11px] text-gray-500 mt-0.5 font-mono font-medium">Completed • <span class="text-emerald-700 font-bold">${escapeHtml(r.quote || 'Quoted')}</span></p>
             </div>
           </div>
           <span class="text-[11px] text-emerald-700 font-semibold">Details →</span>
         </div>`;
     }
 
-    // Failed / Voicemail
+    // Failed / Voicemail / Refused
+    const failReason = r.providerNotes || 'Call unanswered or declined';
     return `
-      <div class="bg-white p-3.5 rounded-xl border border-[#e5e7eb] opacity-60 flex items-center justify-between">
+      <div class="bg-white p-3.5 rounded-xl border border-gray-200 opacity-70 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-rose-500 text-lg">phone_missed</span>
           <div>
-            <h4 class="text-xs font-bold text-gray-900">${escapeHtml(name)}</h4>
-            <p class="text-[11px] text-gray-500 mt-0.5">Voicemail • Unreachable</p>
+            <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
+            <p class="text-[11px] text-gray-500 mt-0.5 truncate max-w-[180px]">${escapeHtml(failReason)}</p>
           </div>
         </div>
+        <span class="text-[10px] text-gray-400 font-medium">Ended</span>
       </div>`;
   }).join('');
 }
@@ -461,15 +592,28 @@ $('#btn-confirm-booking')?.addEventListener('click', () => {
   }
 });
 
-/* ─── Campaign Launch Handler ────────────────────────────────────────── */
+/* ─── Campaign Launch Handler (Make Call Button) ──────────────────────── */
 $('#hunt-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (isRunning) return;
 
-  const promptText = (jobDesc.value.trim()) || 'Paint standard 3BHK flat, standard quality emulsion, include ceiling coat, needed by Friday.';
+  const promptText = (jobDesc?.value.trim()) || 'Call vendor and negotiate a competitive price quote.';
+
+  // If no vendors added yet, try auto-extracting from prompt text (e.g. +918016086948)
+  if (activeVendors.length === 0) {
+    const phoneMatches = promptText.match(/\+?\d{10,15}/g);
+    if (phoneMatches && phoneMatches.length > 0) {
+      phoneMatches.forEach(p => {
+        const formatted = p.startsWith('+') ? p : '+' + p;
+        if (!activeVendors.some(v => v.phone === formatted)) {
+          activeVendors.push({ name: 'Vendor #' + (activeVendors.length + 1), phone: formatted });
+        }
+      });
+      renderPhoneChips();
+    }
+  }
 
   if (activeVendors.length === 0) {
-    alert('Please add at least 1 phone number to call.');
     openAddVendorModal();
     return;
   }
@@ -477,7 +621,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
   const initResults = {};
   activeVendors.forEach(v => {
     initResults[v.name] = { 
-      status: 'in-call', 
+      status: 'initializing', 
       quote: null, 
       timeline: null, 
       summary: null, 
@@ -486,9 +630,10 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
   });
 
   // Create new thread item in Recents
+  const displayTitle = promptText.length > 32 ? promptText.slice(0, 32) + '...' : promptText;
   const newThread = {
     id: 'thread-' + Date.now(),
-    title: promptText.startsWith('Call ') ? promptText : `Call ${activeVendors[0].phone} and ask...`,
+    title: displayTitle,
     prompt: promptText,
     isLive: true,
     results: initResults,
@@ -497,7 +642,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
 
   recentThreads.unshift(newThread);
   isRunning = true;
-  launchBtn.disabled = true;
+  if (launchBtn) launchBtn.disabled = true;
 
   // Switch to Recent Thread view immediately
   switchView('thread', newThread);
@@ -536,7 +681,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     eventSource.onerror = () => {
       eventSource.close();
       isRunning = false;
-      launchBtn.disabled = false;
+      if (launchBtn) launchBtn.disabled = false;
       newThread.isLive = false;
       renderRecentsList();
     };
@@ -544,7 +689,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     console.error('Hunt launch failed:', err);
     alert('Hunt launch failed: ' + (err.message || 'Check network connection'));
     isRunning = false;
-    launchBtn.disabled = false;
+    if (launchBtn) launchBtn.disabled = false;
     newThread.isLive = false;
     renderRecentsList();
   }
@@ -575,9 +720,15 @@ function handleEvent(ev, thread) {
     if (ev.status === 'completed' || ev.status === 'failed') {
       if (eventSource) eventSource.close();
       isRunning = false;
-      launchBtn.disabled = false;
+      if (launchBtn) launchBtn.disabled = false;
       thread.isLive = false;
       renderRecentsList();
+
+      const statusBadge = $('#thread-status-badge');
+      if (statusBadge) {
+        statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200 text-[11px] font-medium';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span>Completed</span>';
+      }
     }
     if (activeThread && activeThread.id === thread.id) {
       renderThreadSwarm(thread.results);

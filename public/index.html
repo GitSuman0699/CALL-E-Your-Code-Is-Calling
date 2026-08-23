@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>CALL-E - AI Negotiation Hub</title>
-  
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>QuoteHunter - AI Negotiation Hub</title>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  
+
   <!-- Fonts & Icons -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+
   <script id="tailwind-config">
     tailwind.config = {
       darkMode: "class",
@@ -30,6 +33,7 @@
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
+
     .audio-bar {
       width: 3px;
       height: 12px;
@@ -39,25 +43,63 @@
       margin: 0 1px;
       animation: bounce 1s infinite ease-in-out;
     }
-    .audio-bar:nth-child(1) { animation-delay: -0.8s; height: 8px; }
-    .audio-bar:nth-child(2) { animation-delay: -0.6s; height: 16px; }
-    .audio-bar:nth-child(3) { animation-delay: -0.4s; height: 20px; }
-    .audio-bar:nth-child(4) { animation-delay: -0.2s; height: 16px; }
-    .audio-bar:nth-child(5) { animation-delay: 0s; height: 10px; }
+
+    .audio-bar:nth-child(1) {
+      animation-delay: -0.8s;
+      height: 8px;
+    }
+
+    .audio-bar:nth-child(2) {
+      animation-delay: -0.6s;
+      height: 16px;
+    }
+
+    .audio-bar:nth-child(3) {
+      animation-delay: -0.4s;
+      height: 20px;
+    }
+
+    .audio-bar:nth-child(4) {
+      animation-delay: -0.2s;
+      height: 16px;
+    }
+
+    .audio-bar:nth-child(5) {
+      animation-delay: 0s;
+      height: 10px;
+    }
 
     @keyframes bounce {
-      0%, 100% { transform: scaleY(0.45); }
-      50% { transform: scaleY(1); }
+
+      0%,
+      100% {
+        transform: scaleY(0.45);
+      }
+
+      50% {
+        transform: scaleY(1);
+      }
     }
-    
+
     .pulse-ring {
       animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
     }
 
     @keyframes pulse-ring {
-      0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 108, 73, 0.4); }
-      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 108, 73, 0); }
-      100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 108, 73, 0); }
+      0% {
+        transform: scale(0.8);
+        box-shadow: 0 0 0 0 rgba(0, 108, 73, 0.4);
+      }
+
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(0, 108, 73, 0);
+      }
+
+      100% {
+        transform: scale(0.8);
+        box-shadow: 0 0 0 0 rgba(0, 108, 73, 0);
+      }
     }
 
     .modal-overlay {
@@ -71,6 +113,7 @@
       z-index: 100;
       padding: 16px;
     }
+
     .modal-card {
       background: #FFFFFF;
       border-radius: 1.25rem;
@@ -81,134 +124,155 @@
       max-height: 90vh;
       overflow-y: auto;
     }
+
     .hidden-view {
       display: none !important;
     }
   </style>
 </head>
 
-<body class="bg-white text-gray-900 antialiased h-screen overflow-hidden flex selection:bg-gray-900 selection:text-white">
+<body
+  class="bg-white text-gray-900 antialiased h-screen overflow-hidden flex selection:bg-gray-900 selection:text-white">
 
   <!-- ─── SideNavBar ─────────────────────────────────────────────────── -->
-  <aside class="bg-[#f8f9fa] text-gray-700 w-64 fixed left-0 top-0 bottom-0 border-r border-[#e5e7eb] flex flex-col h-full py-6 px-4 z-40 select-none">
-    
+  <aside
+    class="bg-[#fafbfc] text-gray-700 w-64 fixed left-0 top-0 bottom-0 border-r border-gray-200/80 flex flex-col h-full py-5 px-3.5 z-40 select-none font-sans">
+
     <!-- Brand Header -->
-    <div class="mb-6 flex items-center gap-3 px-1">
-      <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-900 to-gray-700 text-white flex items-center justify-center shadow-sm shrink-0">
-        <span class="material-symbols-outlined text-[22px]">smart_toy</span>
+    <div class="mb-5 flex items-center gap-2.5 px-1.5">
+      <div class="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shadow-xs shrink-0">
+        <span class="material-symbols-outlined text-[18px]">smart_toy</span>
       </div>
       <div>
-        <h1 class="text-xl font-bold text-black tracking-tight leading-tight">CALL-E</h1>
-        <p class="text-xs text-gray-400 font-medium">AI Negotiation Hub</p>
+        <h1 class="text-sm font-semibold text-gray-900 tracking-tight leading-tight">QuoteHunter</h1>
+        <p class="text-[11px] text-gray-400 font-normal">AI Negotiation Hub</p>
       </div>
     </div>
 
     <!-- CTA Button -->
-    <button id="btn-new-chat" class="bg-black text-white text-sm font-semibold rounded-full py-2.5 px-4 mb-5 w-full flex justify-center items-center gap-2 hover:bg-gray-800 transition-all shadow-sm">
-      <span class="material-symbols-outlined text-lg">add</span>
+    <button id="btn-new-chat"
+      class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium rounded-xl py-2.5 px-3.5 mb-4 w-full flex justify-center items-center gap-2 transition-all shadow-xs cursor-pointer">
+      <span class="material-symbols-outlined text-[16px] font-light">add</span>
       <span>New Negotiation</span>
     </button>
 
     <!-- Navigation Links -->
-    <nav class="flex-1 overflow-y-auto space-y-1 pr-1">
-      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-600 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
-        <span class="material-symbols-outlined text-lg text-gray-400">search</span>
-        <span class="text-sm">Search</span>
-      </a>
+    <nav class="flex-1 overflow-y-auto space-y-0.5 pr-0.5">
+      <!-- <a class="flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-gray-600 font-normal text-xs hover:bg-gray-100/70 hover:text-gray-900 transition-colors"
+        href="#" onclick="switchView('home'); return false;">
+        <span class="material-symbols-outlined text-[18px] text-gray-400 font-light">search</span>
+        <span>Search</span>
+      </a> -->
 
       <!-- Recents Section with Dynamic Thread History -->
-      <div class="pt-2 pb-1">
-        <div class="flex items-center justify-between px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
+      <div class="pt-3 pb-1">
+        <div
+          class="flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
           <span class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-sm">history</span>
+            <span class="material-symbols-outlined text-[14px] text-gray-400 font-light">history</span>
             <span>Recents</span>
           </span>
-          <span class="text-[10px] font-mono font-normal bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full" id="recents-badge">0</span>
+          <span class="text-[10px] font-mono bg-gray-200/80 text-gray-600 px-1.5 py-0.2 rounded-full font-normal"
+            id="recents-badge">0</span>
         </div>
-        
+
         <!-- Recents List -->
-        <div class="mt-1 space-y-1" id="recents-list">
-          <p class="text-xs text-gray-400 italic px-3 py-2" id="no-recents-msg">No recent negotiations</p>
+        <div class="mt-1 space-y-0.5" id="recents-list">
+          <p class="text-xs text-gray-400 italic px-2.5 py-2" id="no-recents-msg">No recent negotiations</p>
         </div>
       </div>
 
-      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-600 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
-        <span class="material-symbols-outlined text-lg text-gray-400">call</span>
-        <span class="text-sm">Call records</span>
-      </a>
     </nav>
 
-    <!-- Footer Links -->
-    <div class="mt-auto border-t border-[#e5e7eb] pt-4 space-y-1">
-      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
-        <span class="material-symbols-outlined text-lg">settings</span>
-        <span class="text-sm">Settings</span>
-      </a>
-      <a class="flex items-center gap-3 py-2 px-3 rounded-lg text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-900 transition-colors" href="#">
-        <span class="material-symbols-outlined text-lg">help</span>
-        <span class="text-sm">Support</span>
+    <!-- Footer Links with Divider -->
+    <div class="mt-auto pt-3 space-y-0.5">
+      <div class="border-t border-gray-200/80 my-2"></div>
+      <a class="flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-gray-600 font-normal text-xs hover:bg-gray-100/70 hover:text-gray-900 transition-colors"
+        href="#">
+        <span class="material-symbols-outlined text-[18px] text-gray-400 font-light">call</span>
+        <span>Call records</span>
       </a>
     </div>
   </aside>
 
   <!-- ─── Main Content Viewport ──────────────────────────────────────── -->
   <div class="ml-64 flex-1 flex flex-col h-screen relative bg-white">
-    
+
     <!-- ═════════════════════════════════════════════════════════════════ -->
-    <!-- VIEW 1: HOME VIEW (Vertically & Horizontally Center-Aligned)      -->
+    <!-- VIEW 1: HOME VIEW (Minimalist, Clean Centered Vibe)              -->
     <!-- ═════════════════════════════════════════════════════════════════ -->
     <main id="view-home" class="flex-1 overflow-y-auto p-6 sm:p-12 flex flex-col justify-center items-center">
-      <div class="max-w-3xl w-full mx-auto space-y-7 -mt-10">
-        
-        <!-- Hero Header (Clean Title, Subtitle moved to hint) -->
-        <header class="text-center">
-          <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-            Let CALL-E negotiate quotes for you
+      <div class="max-w-4xl sm:max-w-[940px] w-full mx-auto space-y-7 -mt-6 px-2 sm:px-4">
+
+        <!-- Hero Header with extra bottom space -->
+        <header class="text-center mb-8 sm:mb-10">
+          <h2 class="text-2xl sm:text-[32px] font-normal text-[#1e293b] tracking-normal">
+            Let QuoteHunter make the call for you
           </h2>
         </header>
 
-        <!-- Central Prompt Card -->
-        <form id="hunt-form" class="bg-white border border-[#e5e7eb] rounded-2xl p-5 sm:p-6 shadow-sm relative focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
-          <textarea 
-            id="job-desc" 
-            class="w-full h-28 bg-transparent border-none resize-none focus:ring-0 text-base text-gray-900 placeholder:text-gray-400 outline-none leading-relaxed" 
-            placeholder="Describe your request, and our AI will call vendors to secure the best price."
-          ></textarea>
-          
-          <div class="flex items-center justify-between border-t border-[#e5e7eb] pt-3.5 mt-2">
+        <!-- Wider Central Prompt Card with decreased height -->
+        <form id="hunt-form"
+          class="bg-white border border-[#d6dbe1] rounded-2xl p-4 sm:p-5 shadow-[0_1px_4px_rgba(0,0,0,0.03)] relative focus-within:border-gray-400 focus-within:shadow-md transition-all">
+          <textarea id="job-desc"
+            class="w-full h-16 sm:h-[76px] bg-transparent border-none resize-none focus:ring-0 text-[15px] sm:text-base text-gray-800 placeholder:text-gray-400 font-normal outline-none leading-relaxed"
+            placeholder="Tell QuoteHunter who to call and what to say"></textarea>
+
+          <div class="flex items-center justify-between pt-2.5 mt-1 border-t border-gray-100">
             <div class="flex items-center gap-2 flex-wrap" id="selected-numbers-container">
-              <button type="button" onclick="openAddVendorModal()" class="w-8 h-8 rounded-full border border-[#e5e7eb] flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="Add Phone Number">
-                <span class="material-symbols-outlined text-lg">add</span>
+              <button type="button" onclick="openAddVendorModal()"
+                class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors cursor-pointer"
+                title="Add Phone Number">
+                <span class="material-symbols-outlined text-[20px] font-light">add</span>
               </button>
             </div>
 
-            <!-- Action Button -->
-            <button type="submit" id="btn-launch-hunt" class="bg-black text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-800 transition-transform active:scale-95 shadow-sm" title="Dispatch Autonomous Calls">
-              <span class="material-symbols-outlined text-xl">phone_in_talk</span>
+            <!-- Action Call Button -->
+            <button type="submit" id="btn-launch-hunt"
+              class="bg-[#5f6368] hover:bg-[#474a4d] text-white w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-sm shrink-0 cursor-pointer"
+              title="Make Call">
+              <span class="material-symbols-outlined text-[19px]">call</span>
             </button>
           </div>
         </form>
 
-        <!-- 4 Category Presets -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="painting">
-            <span class="text-xl">🎨</span>
-            <span class="text-xs font-semibold text-gray-900">Painting RFQ</span>
+        <!-- 4 Minimalist Option Buttons (Original text with clean minimalist line icons, no emojis) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5">
+          <button type="button"
+            class="preset-chip bg-white border border-[#d6dbe1] rounded-xl py-3 px-4 flex items-center gap-2.5 hover:border-gray-400 hover:bg-gray-50/70 transition-all text-left group shadow-[0_1px_2px_rgba(0,0,0,0.02)] cursor-pointer"
+            data-category="painting">
+            <span
+              class="material-symbols-outlined text-[19px] text-[#64748b] group-hover:text-gray-900 font-light shrink-0">format_paint</span>
+            <span class="text-xs sm:text-[13px] font-normal text-[#334155] group-hover:text-gray-900 truncate">Painting
+              RFQ</span>
           </button>
-          
-          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="plumbing">
-            <span class="text-xl">🔧</span>
-            <span class="text-xs font-semibold text-gray-900">Plumbing Repair</span>
+
+          <button type="button"
+            class="preset-chip bg-white border border-[#d6dbe1] rounded-xl py-3 px-4 flex items-center gap-2.5 hover:border-gray-400 hover:bg-gray-50/70 transition-all text-left group shadow-[0_1px_2px_rgba(0,0,0,0.02)] cursor-pointer"
+            data-category="plumbing">
+            <span
+              class="material-symbols-outlined text-[19px] text-[#64748b] group-hover:text-gray-900 font-light shrink-0">plumbing</span>
+            <span class="text-xs sm:text-[13px] font-normal text-[#334155] group-hover:text-gray-900 truncate">Plumbing
+              Repair</span>
           </button>
-          
-          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="electrical">
-            <span class="text-xl">⚡</span>
-            <span class="text-xs font-semibold text-gray-900">Electrical Work</span>
+
+          <button type="button"
+            class="preset-chip bg-white border border-[#d6dbe1] rounded-xl py-3 px-4 flex items-center gap-2.5 hover:border-gray-400 hover:bg-gray-50/70 transition-all text-left group shadow-[0_1px_2px_rgba(0,0,0,0.02)] cursor-pointer"
+            data-category="electrical">
+            <span
+              class="material-symbols-outlined text-[19px] text-[#64748b] group-hover:text-gray-900 font-light shrink-0">electric_bolt</span>
+            <span
+              class="text-xs sm:text-[13px] font-normal text-[#334155] group-hover:text-gray-900 truncate">Electrical
+              Work</span>
           </button>
-          
-          <button type="button" class="preset-chip bg-white border border-[#e5e7eb] rounded-xl p-3.5 flex items-center gap-3 hover:border-black hover:bg-gray-50 transition-all text-left group" data-category="carpentry">
-            <span class="text-xl">🪚</span>
-            <span class="text-xs font-semibold text-gray-900">Custom Carpentry</span>
+
+          <button type="button"
+            class="preset-chip bg-white border border-[#d6dbe1] rounded-xl py-3 px-4 flex items-center gap-2.5 hover:border-gray-400 hover:bg-gray-50/70 transition-all text-left group shadow-[0_1px_2px_rgba(0,0,0,0.02)] cursor-pointer"
+            data-category="carpentry">
+            <span
+              class="material-symbols-outlined text-[19px] text-[#64748b] group-hover:text-gray-900 font-light shrink-0">handyman</span>
+            <span class="text-xs sm:text-[13px] font-normal text-[#334155] group-hover:text-gray-900 truncate">Custom
+              Carpentry</span>
           </button>
         </div>
 
@@ -218,39 +282,51 @@
     <!-- ═════════════════════════════════════════════════════════════════ -->
     <!-- VIEW 2: RECENT THREAD VIEW (Live Swarm & Best Quote Found)        -->
     <!-- ═════════════════════════════════════════════════════════════════ -->
-    <section id="view-thread" class="flex-1 flex flex-col h-full hidden-view">
-      
+    <section id="view-thread" class="flex-1 flex flex-col h-full hidden-view font-sans">
+
       <!-- Top Thread Header Bar -->
-      <header class="bg-[#f8f9fa] h-14 flex items-center px-6 border-b border-[#e5e7eb] shrink-0 z-10">
-        <div class="flex-1 min-w-0">
-          <h2 class="text-sm font-semibold text-gray-900 truncate" id="top-bar-title">
-            Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require
+      <header
+        class="bg-[#fafbfc] h-14 flex items-center justify-between px-6 sm:px-8 border-b border-gray-200/80 shrink-0 z-10">
+        <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-4">
+          <span class="material-symbols-outlined text-gray-400 text-[18px] font-light shrink-0">forum</span>
+          <h2 class="text-xs sm:text-[13px] font-medium text-gray-800 truncate" id="top-bar-title">
+            Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the
+            estimated total price, and how many days it will require
           </h2>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span id="thread-status-badge"
+            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-medium">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+            <span>Live Swarm</span>
+          </span>
         </div>
       </header>
 
       <!-- Scrollable Thread Body -->
       <div class="flex-1 overflow-y-auto px-6 sm:px-12 py-6 pb-28 space-y-6">
-        
+
         <!-- User Prompt Speech Bubble -->
         <div class="flex justify-end">
-          <div class="bg-[#f3f4f5] text-gray-900 rounded-2xl rounded-tr-none px-5 py-3.5 max-w-2xl border border-[#e5e7eb] shadow-xs">
-            <p class="text-sm leading-relaxed" id="thread-user-prompt">
-              Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require
+          <div
+            class="bg-[#f8f9fa] text-gray-800 rounded-2xl rounded-tr-none px-5 py-3.5 max-w-2xl border border-gray-200/80 shadow-xs">
+            <p class="text-xs sm:text-[13px] leading-relaxed font-normal" id="thread-user-prompt">
+              Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the
+              estimated total price, and how many days it will require
             </p>
           </div>
         </div>
 
         <!-- Bento Grid: Swarm & Champion Spotlight -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
+
           <!-- Left Column: Live Call Swarm -->
           <div class="lg:col-span-5 space-y-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-emerald-700 text-base">forum</span>
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-emerald-700 text-sm font-light">headset_mic</span>
               <span>Live Call Swarm</span>
             </h3>
-            
+
             <div class="space-y-2.5" id="thread-swarm-list">
               <!-- Swarm dynamic cards -->
             </div>
@@ -258,65 +334,73 @@
 
           <!-- Right Column: Best Quote Found Spotlight -->
           <div class="lg:col-span-7 space-y-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-amber-600 text-base">workspace_premium</span>
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-amber-600 text-sm font-light">star</span>
               <span>Best Quote Found</span>
             </h3>
 
-            <div class="bg-white border border-[#e5e7eb] rounded-2xl p-6 flex flex-col justify-between shadow-sm space-y-5">
+            <div
+              class="bg-white border border-gray-200/90 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-xs space-y-5">
               <div>
                 <!-- Header Info -->
                 <div class="flex justify-between items-start">
                   <div>
-                    <h4 class="text-xl font-bold text-gray-900" id="winner-name">Raj Painters</h4>
+                    <h4 class="text-lg sm:text-xl font-medium text-gray-900" id="winner-name">Raj Painters</h4>
                     <div class="flex items-center gap-2 mt-1.5">
-                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
-                        <span class="material-symbols-outlined text-[13px]">verified</span>
+                      <span
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] font-medium">
+                        <span class="material-symbols-outlined text-[13px] font-light">verified</span>
                         <span>Verified Vendor</span>
                       </span>
-                      <span class="text-xs text-gray-500 font-medium">4.8/5 Rating</span>
+                      <span class="text-xs text-gray-400 font-normal">4.8/5 Rating</span>
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="text-3xl font-extrabold text-emerald-700 tracking-tight font-mono" id="winner-price">₹11,800</div>
-                    <div class="text-[11px] text-gray-400 font-medium">Includes Materials</div>
+                    <div class="text-2xl sm:text-3xl font-semibold text-emerald-700 tracking-tight font-mono"
+                      id="winner-price">
+                      ₹11,800</div>
+                    <div class="text-[11px] text-gray-400 font-normal">Includes Materials</div>
                   </div>
                 </div>
 
                 <!-- Badges Grid -->
                 <div class="grid grid-cols-2 gap-3 mt-4">
-                  <div class="bg-[#f8f9fa] p-2.5 rounded-xl border border-[#e5e7eb] flex items-center gap-2.5">
-                    <span class="material-symbols-outlined text-gray-400 text-base">calendar_today</span>
+                  <div class="bg-[#fafbfc] p-3 rounded-xl border border-gray-200/70 flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-gray-400 text-[18px] font-light">calendar_today</span>
                     <div>
-                      <div class="text-[10px] text-gray-400 uppercase font-semibold">Timeline</div>
-                      <div class="text-xs font-bold text-gray-900" id="winner-timeline">2 Days</div>
+                      <div class="text-[10px] text-gray-400 uppercase font-medium">Timeline</div>
+                      <div class="text-xs font-semibold text-gray-800" id="winner-timeline">2 Days</div>
                     </div>
                   </div>
 
-                  <div class="bg-[#f8f9fa] p-2.5 rounded-xl border border-[#e5e7eb] flex items-center gap-2.5">
-                    <span class="material-symbols-outlined text-gray-400 text-base">verified_user</span>
+                  <div class="bg-[#fafbfc] p-3 rounded-xl border border-gray-200/70 flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-gray-400 text-[18px] font-light">verified_user</span>
                     <div>
-                      <div class="text-[10px] text-gray-400 uppercase font-semibold">Warranty</div>
-                      <div class="text-xs font-bold text-gray-900" id="winner-warranty">1 Year Included</div>
+                      <div class="text-[10px] text-gray-400 uppercase font-medium">Warranty</div>
+                      <div class="text-xs font-semibold text-gray-800" id="winner-warranty">1 Year Included</div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Quote Box -->
-                <div class="bg-[#f8f9fa] p-3.5 rounded-xl border border-[#e5e7eb] mt-4 relative">
-                  <span class="material-symbols-outlined absolute top-2 right-2 text-gray-300 text-2xl">format_quote</span>
-                  <p class="text-xs text-gray-700 italic leading-relaxed pr-6" id="winner-quote-text">
-                    "Yes, we can do it for 11,800 final price. We'll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."
+                <div class="bg-[#fafbfc] p-3.5 rounded-xl border border-gray-200/70 mt-4 relative">
+                  <span
+                    class="material-symbols-outlined absolute top-2 right-2 text-gray-300 text-2xl font-light">format_quote</span>
+                  <p class="text-xs text-gray-700 italic leading-relaxed pr-6 font-normal" id="winner-quote-text">
+                    "Yes, we can do it for 11,800 final price. We'll start tomorrow morning and finish by Thursday
+                    evening. Quality paint guaranteed."
                   </p>
                 </div>
               </div>
 
               <!-- Action Buttons -->
-              <div class="flex gap-3 pt-2 border-t border-[#e5e7eb]">
-                <button type="button" id="btn-view-transcript" class="flex-1 bg-white border border-[#e5e7eb] text-gray-900 text-xs font-semibold rounded-full py-2.5 hover:bg-gray-50 transition-colors">
+              <div class="flex gap-3 pt-2 border-t border-gray-100">
+                <button type="button" id="btn-view-transcript"
+                  class="flex-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer">
                   View Full Transcript
                 </button>
-                <button type="button" id="btn-book-provider" class="flex-1 bg-black text-white text-xs font-semibold rounded-full py-2.5 hover:bg-gray-800 transition-colors shadow-xs">
+                <button type="button" id="btn-book-provider"
+                  class="flex-1 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer">
                   Book Provider
                 </button>
               </div>
@@ -330,17 +414,17 @@
 
       <!-- Sticky Bottom Reply Bar -->
       <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/90 to-transparent">
-        <div class="max-w-3xl mx-auto bg-white border border-[#e5e7eb] rounded-full p-1.5 pl-3 flex items-center gap-2 shadow-md">
-          <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors shrink-0">
-            <span class="material-symbols-outlined text-lg">add</span>
+        <div
+          class="max-w-3xl mx-auto bg-white border border-gray-200/90 rounded-2xl p-1.5 pl-3 flex items-center gap-2 shadow-sm">
+          <button
+            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors shrink-0 cursor-pointer">
+            <span class="material-symbols-outlined text-[18px] font-light">add</span>
           </button>
-          <input 
-            type="text" 
-            placeholder="Reply to CALL-E..." 
-            class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-900 placeholder:text-gray-400 outline-none"
-          />
-          <button class="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors shrink-0">
-            <span class="material-symbols-outlined text-base">arrow_upward</span>
+          <input type="text" placeholder="Reply to QuoteHunter..."
+            class="flex-1 bg-transparent border-none focus:ring-0 text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 outline-none font-normal" />
+          <button
+            class="w-8 h-8 bg-[#5f6368] hover:bg-[#474a4d] text-white rounded-xl flex items-center justify-center transition-colors shrink-0 cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
           </button>
         </div>
       </div>
@@ -351,53 +435,62 @@
 
   <!-- ─── Grounded Evidence & Full Transcript Modal ──────────────────── -->
   <div id="evidence-modal" class="modal-overlay hidden-view">
-    <div class="modal-card">
-      <div class="p-4 sm:p-5 border-b border-[#e5e7eb] flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">🎙️</span>
+    <div class="modal-card max-w-lg w-full bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+      <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="material-symbols-outlined text-gray-600 text-[20px] font-light">record_voice_over</span>
           <div>
-            <h3 id="modal-provider-name" class="font-bold text-gray-900 text-base">Raj Painters</h3>
-            <span id="modal-phone" class="text-xs text-gray-500 font-mono">+91 98765 43210</span>
+            <h3 id="modal-provider-name" class="font-medium text-gray-900 text-base">Raj Painters</h3>
+            <span id="modal-phone" class="text-xs text-gray-400 font-mono">+91 98765 43210</span>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <span id="modal-confidence-badge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">Verified</span>
-          <button id="btn-close-modal" type="button" class="text-gray-400 hover:text-gray-900 text-2xl p-1 leading-none">&times;</button>
+          <span id="modal-confidence-badge"
+            class="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">Verified</span>
+          <button id="btn-close-modal" type="button"
+            class="text-gray-400 hover:text-gray-700 text-xl p-1 leading-none rounded-lg transition-colors">&times;</button>
         </div>
       </div>
 
       <div class="p-5 sm:p-6 space-y-4 text-xs">
         <div class="grid grid-cols-2 gap-3">
-          <div class="p-3 rounded-lg bg-gray-50 border border-[#e5e7eb]">
-            <span class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Locked Price Quote</span>
-            <span id="modal-quote" class="text-lg font-bold text-emerald-700 font-mono">₹11,800</span>
+          <div class="p-3.5 rounded-xl bg-gray-50/80 border border-gray-200">
+            <span class="text-[10px] uppercase font-medium text-gray-400 block mb-1">Locked Price Quote</span>
+            <span id="modal-quote" class="text-lg font-semibold text-emerald-700 font-mono">₹11,800</span>
           </div>
-          <div class="p-3 rounded-lg bg-gray-50 border border-[#e5e7eb]">
-            <span class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Timeline</span>
-            <span id="modal-timeline" class="text-sm font-semibold text-gray-900">2 Days</span>
-          </div>
-        </div>
-
-        <div>
-          <label class="text-[11px] font-bold uppercase text-gray-500 block mb-1.5">Verbatim Spoken Audio Evidence</label>
-          <div class="p-3.5 rounded-lg bg-emerald-50/80 border border-emerald-200 text-emerald-950 font-mono text-xs italic" id="modal-evidence-text">
-            "Yes, we can do it for 11,800 final price. We'll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."
+          <div class="p-3.5 rounded-xl bg-gray-50/80 border border-gray-200">
+            <span class="text-[10px] uppercase font-medium text-gray-400 block mb-1">Timeline</span>
+            <span id="modal-timeline" class="text-sm font-medium text-gray-900">2 Days</span>
           </div>
         </div>
 
         <div>
-          <label class="text-[11px] font-bold uppercase text-gray-500 block mb-1.5">Provider Stated Terms</label>
-          <div class="p-3 rounded-lg bg-gray-50 border border-[#e5e7eb] text-gray-700" id="modal-notes-text">
+          <label class="text-[11px] font-medium uppercase text-gray-400 block mb-1.5">Verbatim Spoken Audio
+            Evidence</label>
+          <div
+            class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-emerald-950 font-mono text-xs italic leading-relaxed"
+            id="modal-evidence-text">
+            "Yes, we can do it for 11,800 final price. We'll start tomorrow morning and finish by Thursday evening.
+            Quality paint guaranteed."
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-medium uppercase text-gray-400 block mb-1.5">Provider Stated Terms</label>
+          <div class="p-3.5 rounded-xl bg-gray-50/80 border border-gray-200 text-gray-700 leading-relaxed"
+            id="modal-notes-text">
             Standard emulsion with ceiling primer coat. Free touch-up within 1 year warranty.
           </div>
         </div>
       </div>
 
-      <div class="p-4 border-t border-[#e5e7eb] bg-gray-50 flex items-center justify-between">
-        <button id="btn-copy-evidence" type="button" class="px-4 py-2 border border-[#e5e7eb] bg-white rounded-full text-xs font-semibold hover:bg-gray-100 transition-colors">
+      <div class="p-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+        <button id="btn-copy-evidence" type="button"
+          class="px-4 py-2 border border-gray-200 bg-white rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-2xs">
           <span id="copy-btn-label">Copy JSON</span>
         </button>
-        <button id="btn-confirm-booking" type="button" class="px-4 py-2 bg-black text-white rounded-full text-xs font-semibold hover:bg-gray-800 transition-opacity">
+        <button id="btn-confirm-booking" type="button"
+          class="px-5 py-2 bg-[#5f6368] hover:bg-[#474a4d] text-white rounded-xl text-xs font-medium transition-colors shadow-2xs">
           Confirm Booking
         </button>
       </div>
@@ -406,40 +499,38 @@
 
   <!-- ─── Add Phone Number Modal ──────────────────────────────────────── -->
   <div id="add-vendor-modal" class="modal-overlay hidden-view">
-    <div class="modal-card max-w-md">
-      <div class="p-4 sm:p-5 border-b border-[#e5e7eb] flex items-center justify-between">
-        <h3 class="font-bold text-gray-900 text-base">Add Target Phone Number</h3>
-        <button id="btn-close-add-modal" type="button" class="text-gray-400 hover:text-gray-900 text-2xl p-1 leading-none">&times;</button>
+    <div class="modal-card max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+      <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h3 class="text-base sm:text-[17px] font-medium text-gray-900">Add phone number</h3>
+          <p class="text-xs text-gray-400 font-normal mt-0.5">Specify who CALL-E should reach out to</p>
+        </div>
+        <button id="btn-close-add-modal" type="button"
+          class="text-gray-400 hover:text-gray-700 text-xl p-1 leading-none rounded-lg transition-colors">&times;</button>
       </div>
 
       <form id="add-vendor-form" class="p-5 space-y-4">
         <div>
-          <label for="input-vendor-name" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Contact / Business Name</label>
-          <input 
-            id="input-vendor-name" 
-            type="text" 
-            placeholder="e.g. Raj Painters or My Mobile" 
-            required 
-            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:border-black" 
-            value="My Mobile"
-          />
+          <label for="input-vendor-name" class="block text-xs font-medium text-gray-700 mb-1.5">Contact / Business
+            Name</label>
+          <input id="input-vendor-name" type="text" placeholder="e.g. Acme Painting, John Doe (optional)"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder:text-gray-400 outline-none focus:border-gray-800 transition-all" />
         </div>
 
         <div>
-          <label for="input-vendor-phone" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Phone Number (with Country Code)</label>
-          <input 
-            id="input-vendor-phone" 
-            type="tel" 
-            placeholder="+919876543210 or +14155552671" 
-            required 
-            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm font-mono outline-none focus:border-black" 
-          />
-          <p class="text-[11px] text-gray-500 mt-1">Include country prefix e.g. <strong class="text-gray-900">+91</strong> (India) or <strong class="text-gray-900">+1</strong> (US).</p>
+          <label for="input-vendor-phone" class="block text-xs font-medium text-gray-700 mb-1.5">Phone Number (with
+            country code)</label>
+          <input id="input-vendor-phone" type="tel" placeholder="+918016086948 or +14155550100" required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm font-mono text-gray-800 placeholder:text-gray-400 outline-none focus:border-gray-800 transition-all" />
+          <p class="text-[11px] text-gray-400 mt-1.5">Include country prefix (e.g. +91 for India or +1 for US)</p>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2">
-          <button id="btn-cancel-add-modal" type="button" class="px-4 py-2 border border-gray-300 rounded-full text-xs font-semibold hover:bg-gray-100 transition-colors">Cancel</button>
-          <button type="submit" class="px-4 py-2 bg-black text-white rounded-full text-xs font-semibold hover:bg-gray-800 transition-opacity">Add to Queue</button>
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+          <button id="btn-cancel-add-modal" type="button"
+            class="px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-900 rounded-lg transition-colors">Cancel</button>
+          <button type="submit"
+            class="px-5 py-2.5 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl transition-colors shadow-xs">Add
+            Number</button>
         </div>
       </form>
     </div>
@@ -447,4 +538,5 @@
 
   <script src="/app.js"></script>
 </body>
+
 </html>
