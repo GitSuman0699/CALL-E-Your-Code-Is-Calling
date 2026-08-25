@@ -52,26 +52,26 @@ When hiring local contractors or service providers (painters, plumbers, electric
 
 ```mermaid
 flowchart TB
-    subgraph Client["Frontend (QuoteHunter Web App)"]
+    subgraph Client["Frontend - QuoteHunter Web App"]
         UI["Main Chat & Preset Prompt Hub"]
         VerifyModal["Pre-Call Verification Modal"]
         CountdownRing["3s Circular Countdown Buffer"]
         ThreadView["Recent Threads & Swarm Dashboard"]
-        DossierModal["Deal Hand-off Dossier (Call / WhatsApp)"]
+        DossierModal["Deal Hand-off Dossier - Call & WhatsApp"]
         AudioModal["Full Conversation Waveform Player"]
     end
 
-    subgraph Server["Backend (Node.js + Express + TypeScript)"]
-        Routes["Quote Routes (/api/quotes)"]
-        SSEStream["Server-Sent Events (/api/events/:jobId)"]
+    subgraph Server["Backend - Node.js + Express + TypeScript"]
+        Routes["Quote Routes: /api/quotes"]
+        SSEStream["Server-Sent Events: /api/events/:jobId"]
         Orchestrator["Quote Orchestrator"]
         CalleService["CALL-E Telecom Service"]
     end
 
     subgraph CALLE["CALL-E Telephony & AI Cloud"]
-        RESTCalls["Calls REST API (/v1/calls)"]
-        DevEvents["Developer Events Stream (/v1/calls/:id/events)"]
-        PSTN["Global PSTN / Cellular Telecom Carrier"]
+        RESTCalls["Calls REST API: /v1/calls"]
+        DevEvents["Developer Events Stream: /v1/calls/:id/events"]
+        PSTN["Global PSTN Cellular Telecom Carrier"]
     end
 
     UI -->|1. Submit Job & Numbers| VerifyModal
@@ -79,10 +79,10 @@ flowchart TB
     CountdownRing -->|3. Dispatches after 3s buffer| Routes
     Routes --> Orchestrator
     Orchestrator --> CalleService
-    CalleService -->|4. Parallel Outbound Calls (Promise.allSettled)| RESTCalls
+    CalleService -->|4. Parallel Outbound Calls via Promise.allSettled| RESTCalls
     RESTCalls --> PSTN
     PSTN -->|5. Voice AI Negotiation Call| PSTN
-    DevEvents -->|6. Real-Time Events (Ringing, In-Call, Analyzing)| CalleService
+    DevEvents -->|6. Real-Time Events: Ringing, In-Call, Analyzing| CalleService
     RESTCalls -->|7. Structured Result Schemas & Transcripts| CalleService
     CalleService --> Orchestrator
     Orchestrator -->|8. Real-Time Stream Updates| SSEStream
