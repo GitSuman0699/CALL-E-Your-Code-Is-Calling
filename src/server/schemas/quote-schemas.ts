@@ -3,7 +3,7 @@ import { ServiceCategory } from '../types.js';
 export function getRecipientResultSchema(category: ServiceCategory) {
   return {
     type: 'object',
-    required: ['quote_provided', 'price_estimate', 'availability', 'evidence'],
+    required: ['quote_provided', 'price_estimate', 'price_numeric', 'availability', 'evidence'],
     properties: {
       quote_provided: {
         type: 'string',
@@ -14,32 +14,32 @@ export function getRecipientResultSchema(category: ServiceCategory) {
       price_estimate: {
         type: 'string',
         description:
-          'The quoted price or price range as stated by the provider (e.g., "₹12,000", "Rs 9500", "5000-7000 rupees", "$250"). If no price was stated, return "not_provided".',
+          'The exact final total price after adding work, labor, and materials (and applying any discounts). For example, if work is $300, labor is $300, and materials are $300, the total price is "$900". Always compute the correct arithmetic sum of all components. Never add calendar dates (like 28th of August) into the price. If no price was stated, return "not_provided".',
       },
       price_numeric: {
         type: 'number',
         description:
-          'The numerical value of the quoted price in standard base units (e.g., 12000 for ₹12,000). Use 0 if not provided or unknown.',
+          'The exact final total numerical sum of all itemized quotes (e.g., 900 for $900 total). Compute: base_work + labor + materials - discounts. Use 0 if not provided or unknown.',
       },
       availability: {
         type: 'string',
         description:
-          'When the provider stated they can start or complete the work (e.g., "tomorrow morning", "within 2-3 days", "next Monday", "immediately"). Return "not_discussed" if not mentioned.',
+          'When the provider stated they can start or complete the work (e.g., "tomorrow morning", "within 2-3 days", "August 28", "immediately"). Return "not_discussed" if not mentioned.',
       },
       additional_conditions: {
         type: 'string',
         description:
-          'Any extra terms, material charges, travel fees, GST/taxes, or minimum charges mentioned by the vendor. Return "none_mentioned" if standard.',
+          'Any extra terms, material charges, travel fees, warranty, discounts, or minimum charges mentioned by the vendor. Return "none_mentioned" if standard.',
       },
       provider_notes: {
         type: 'string',
         description:
-          'Brief notable context from the conversation (e.g., warranty offered, experience, needs site visit first, materials to be bought by customer).',
+          'Brief notable context and itemized price breakdown (e.g., "$300 work + $300 labor + $300 materials ($100 discount applied) = $900 total, 2-year warranty").',
       },
       evidence: {
         type: 'string',
         description:
-          'A direct verbatim or near-verbatim quote snippet in the spoken language (Hindi, English, etc.) supporting the price and availability.',
+          'Direct verbatim spoken quotes in quotation marks supporting the price, breakdown, and availability.',
       },
     },
     additionalProperties: false,

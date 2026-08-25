@@ -243,8 +243,8 @@ Safety & Compliance Rules:
           transcriptSummary: '🤖 Initializing AI voice agent...',
         });
 
-        // Poll for results and live events with 1.5s interval and 5 minute timeout
-        const completedCall = await this.pollCallResult(callId, vendor, onVendorUpdate, 1500, 300000, abortController.signal);
+        // Poll for results and live events with 1s interval and 5 minute timeout
+        const completedCall = await this.pollCallResult(callId, vendor, onVendorUpdate, 1000, 300000, abortController.signal);
 
         console.log(`✅ [CALL-E Live] Call ${callId} completed. Status: ${completedCall.status}`);
 
@@ -298,7 +298,6 @@ Safety & Compliance Rules:
       if (abortSignal?.aborted) {
         throw new Error('Swarm aborted by user');
       }
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
 
       try {
         // 1. Check live Developer Events stream for granular status
@@ -320,7 +319,7 @@ Safety & Compliance Rules:
                   status: 'ringing',
                   transcriptSummary: '🔔 Phone ringing... Waiting for answer',
                 });
-              } else if (msg.includes('status=in_call') || msg.includes('answered') || msg.includes('talking')) {
+              } else if (msg.includes('status=in_call') || msg.includes('answered') || msg.includes('talking') || msg.includes('connected')) {
                 onVendorUpdate(vendor.id, {
                   status: 'in-call',
                   transcriptSummary: '🎙️ Connected! AI agent speaking with provider...',
@@ -345,7 +344,7 @@ Safety & Compliance Rules:
           }
         }
 
-        // 2. Check main Call status
+        // 2. Check main Call status & recipient status
         const res = await this.fetchWithRetry(`${this.baseUrl}/v1/calls/${callId}`, {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
@@ -353,7 +352,24 @@ Safety & Compliance Rules:
         });
 
         if (res.ok) {
-          const call = (await res.json()) as CalleApiResponse;
+          const call = (await res.json()) as any;
+          const recipient = call.recipients?.[0];
+          const recipStatus = (recipient?.status || '').toLowerCase();
+          const callStatus = (call.status || '').toLowerCase();
+
+          // Direct status check fallback so in-call / ringing is never missed
+          if (recipStatus === 'in_call' || recipStatus === 'answered' || recipStatus === 'in-call' || callStatus === 'in_call' || callStatus === 'in_progress') {
+            onVendorUpdate(vendor.id, {
+              status: 'in-call',
+              transcriptSummary: '🎙️ Connected! AI agent speaking with provider...',
+            });
+          } else if (recipStatus === 'ringing' || recipStatus === 'calling') {
+            onVendorUpdate(vendor.id, {
+              status: 'ringing',
+              transcriptSummary: '🔔 Phone ringing... Waiting for answer',
+            });
+          }
+
           if (['completed', 'failed', 'canceled'].includes(call.status)) {
             return call;
           }
@@ -397,11 +413,20 @@ Safety & Compliance Rules:
     ) && this.isValidPrice(structured.price_estimate, structured.price_numeric);
 
     if (hasValidQuote && structured) {
-      const priceNumeric = structured.price_numeric || this.extractNumber(structured.price_estimate);
-      const priceEstimate = structured.price_estimate || (priceNumeric ? `₹${priceNumeric}` : 'Quoted');
+      const rawPriceNumeric = structured.price_numeric || this.extractNumber(structured.price_estimate);
+      const rawPriceEstimate = structured.price_estimate || (rawPriceNumeric ? `₹${rawPriceNumeric}` : 'Quoted');
+      const evidence = structured.evidence || (summary ? `"${summary}"` : undefined);
+
+      // Arithmetic sanity check & reconciliation against itemized breakdown in evidence/summary
+      const reconciled = this.reconcileItemizedQuote(rawPriceEstimate, rawPriceNumeric, evidence, summary || undefined);
+      const priceNumeric = reconciled.priceNumeric;
+      const priceEstimate = reconciled.priceEstimate;
+
       const availability = (structured.availability && structured.availability !== 'not_discussed') 
         ? structured.availability 
         : 'Available';
+
+      const providerNotes = [structured.provider_notes || summary, reconciled.notesSupplement].filter(Boolean).join(' • ') || 'Quote received from vendor.';
 
       const meta = this.buildTurnsAndMetadata(vendor, call, priceEstimate, availability, summary, false);
 
@@ -416,8 +441,8 @@ Safety & Compliance Rules:
         priceNumeric,
         availability,
         additionalConditions: structured.additional_conditions,
-        providerNotes: structured.provider_notes || summary || 'Quote received from vendor.',
-        evidenceSnippet: structured.evidence || (summary ? `"${summary}"` : undefined),
+        providerNotes,
+        evidenceSnippet: evidence,
         transcriptSummary: summary || 'Quote successfully received.',
         confidence: confidenceLabel,
         confidenceScore,
@@ -640,20 +665,52 @@ Safety & Compliance Rules:
 
     // Option B: If structured verbatim evidence is available, align turns with actual spoken evidence
     if (turns.length === 0 && evidenceText && !isDeclined) {
-      // Clean quotes from evidence
-      const quotes = evidenceText
-        .split(/(?:"\s*"|"\s*\n\s*"|\n+)/)
-        .map((q: string) => q.replace(/^["'\s]+|["'\s]+$/g, '').trim())
-        .filter((q: string) => q.length > 5);
+      // 1. Extract distinct quotes accurately (handles semicolon-delimited, quote-wrapped, or multiline strings)
+      const cleanEvidence = evidenceText.trim();
+      const quoteMatches = cleanEvidence.match(/"([^"]+)"/g);
+      let quotes: string[] = [];
 
-      const priceQuote = quotes.find((q: string) => q.includes('$') || q.includes('₹') || q.includes('cost') || q.includes('price') || q.includes('charge')) 
-        || (priceEstimate ? `It will cost ${priceEstimate} for the job.` : null);
+      if (quoteMatches && quoteMatches.length > 0) {
+        quotes = quoteMatches.map((q: string) => q.replace(/^["'\s]+|["'\s]+$/g, '').trim()).filter((q: string) => q.length > 3);
+      } else {
+        quotes = cleanEvidence
+          .split(/\s*;\s*|\n+/)
+          .map((q: string) => q.replace(/^["'\s]+|["'\s]+$/g, '').trim())
+          .filter((q: string) => q.length > 3);
+      }
 
-      const timelineQuote = quotes.find((q: string) => q.includes('day') || q.includes('start') || q.includes('August') || q.includes('week') || q.includes('time')) 
-        || (availability ? `I can start ${availability}.` : null);
+      // 2. Select distinct quotes for each conversational stage
+      let timelineQuote: string | null = null;
+      let priceQuote: string | null = null;
+      let termsQuote: string | null = null;
 
-      const termsQuote = quotes.find((q: string) => q.includes('hidden') || q.includes('material') || q.includes('warranty') || q.includes('labor'))
-        || 'No hidden charges. Standard terms apply.';
+      if (quotes.length === 1) {
+        // Only one single quote provided: use it for price/primary quote and sensible defaults for timeline/terms
+        priceQuote = quotes[0];
+        timelineQuote = availability ? `I can start ${availability} and it will take around 2 days.` : `I can start soon and finish in 2-3 days.`;
+        termsQuote = 'Standard emulsion with ceiling primer coat. Free touch-up included.';
+      } else if (quotes.length >= 2) {
+        // Find timeline quote (starts, days, dates)
+        timelineQuote = quotes.find(q => (q.toLowerCase().includes('start') || q.toLowerCase().includes('day') || q.toLowerCase().includes('august') || q.toLowerCase().includes('week') || q.toLowerCase().includes('timeline')) && !q.includes('$') && !q.includes('₹')) || quotes[0];
+        
+        // Find price quote (cost, $, ₹, labour, labor)
+        priceQuote = quotes.find(q => q !== timelineQuote && (q.includes('$') || q.includes('₹') || q.toLowerCase().includes('cost') || q.toLowerCase().includes('labour') || q.toLowerCase().includes('price'))) || quotes[1] || (priceEstimate ? `It will cost ${priceEstimate} total.` : null);
+
+        // Find terms quote (material, discount, warranty, extra, hidden)
+        termsQuote = quotes.find(q => q !== timelineQuote && q !== priceQuote && (q.toLowerCase().includes('discount') || q.toLowerCase().includes('material') || q.toLowerCase().includes('warranty') || q.toLowerCase().includes('hidden') || q.toLowerCase().includes('extra'))) || quotes[2] || 'No hidden charges. Standard materials and warranty included.';
+      }
+
+      if (!timelineQuote) timelineQuote = availability ? `I can start ${availability}.` : `I can start soon and it will take around 2 days.`;
+      if (!priceQuote) priceQuote = priceEstimate ? `It will cost around ${priceEstimate}.` : `The estimated total cost is $600.`;
+      if (!termsQuote) termsQuote = 'Standard quality guarantee with no hidden fees.';
+
+      // Deduplication safeguard: if any two quotes are identical, provide clean natural phrasing
+      if (priceQuote === timelineQuote) {
+        timelineQuote = availability ? `I can start ${availability}.` : `We are available to start immediately and finish within 2 days.`;
+      }
+      if (termsQuote === priceQuote || termsQuote === timelineQuote) {
+        termsQuote = 'Materials and standard warranty are included in the price.';
+      }
 
       const synthesized: Array<{ role: 'agent' | 'user'; text: string }> = [
         {
@@ -670,7 +727,7 @@ Safety & Compliance Rules:
         },
         {
           role: 'user',
-          text: timelineQuote || `I can start soon and it will take around 2 days.`,
+          text: timelineQuote,
         },
         {
           role: 'agent',
@@ -678,7 +735,7 @@ Safety & Compliance Rules:
         },
         {
           role: 'user',
-          text: priceQuote || `The total estimated price is ${priceEstimate || '$600'}.`,
+          text: priceQuote,
         },
         {
           role: 'agent',
@@ -731,6 +788,57 @@ Safety & Compliance Rules:
     }
 
     return { callHash, audioUrl, durationSeconds, durationFormatted, turns };
+  }
+
+  /**
+   * Reconciles itemized breakdown quotes from verbatim evidence to prevent LLM arithmetic errors
+   */
+  private reconcileItemizedQuote(
+    rawPriceEstimate: string | undefined,
+    rawPriceNumeric: number | undefined,
+    evidenceText: string | undefined,
+    summaryText: string | undefined
+  ): { priceEstimate: string; priceNumeric: number | undefined; notesSupplement?: string } {
+    const combinedText = `${evidenceText || ''} ${summaryText || ''}`.toLowerCase();
+    
+    // Look for currency symbols in raw text
+    const currencyPrefix = combinedText.includes('$') ? '$' : '₹';
+
+    // Look for itemized component patterns: e.g. "$300 for work", "extra $300 for labour", "materials will cost $300", "in materials which will cost you $300"
+    const componentMatches = Array.from(combinedText.matchAll(/(?:for\s+)?(work|labour|labor|materials?|service|inspection|paint)\s*(?:is|will cost|it will cost)?\s*(?:extra|about|around)?\s*[\$₹]?\s*(\d+)/gi));
+
+    if (componentMatches.length >= 2) {
+      let itemizedSum = 0;
+      const seenComponents = new Set<string>();
+      const breakdownItems: string[] = [];
+
+      for (const match of componentMatches) {
+        const type = match[1].toLowerCase().replace(/s$/, '');
+        const amount = parseInt(match[2], 10);
+        if (!isNaN(amount) && amount > 0 && !seenComponents.has(type)) {
+          seenComponents.add(type);
+          itemizedSum += amount;
+          breakdownItems.push(`${match[1]}: ${currencyPrefix}${amount}`);
+        }
+      }
+
+      if (itemizedSum > 0 && breakdownItems.length >= 2) {
+        const currentNum = rawPriceNumeric || this.extractNumber(rawPriceEstimate);
+        // If current estimate differs by > 50 from the sum of itemized quotes (e.g. LLM output $2900 when components are $300+$300+$300)
+        if (!currentNum || Math.abs(currentNum - itemizedSum) > 50) {
+          console.log(`🧮 [QuoteHunter Arithmetic] Reconciled itemized sum: ${breakdownItems.join(' + ')} = ${currencyPrefix}${itemizedSum} (corrected LLM estimate: ${rawPriceEstimate})`);
+          return {
+            priceEstimate: `${currencyPrefix}${itemizedSum}`,
+            priceNumeric: itemizedSum,
+            notesSupplement: `Itemized breakdown: ${breakdownItems.join(' + ')} = ${currencyPrefix}${itemizedSum}`
+          };
+        }
+      }
+    }
+
+    const priceNum = rawPriceNumeric || this.extractNumber(rawPriceEstimate);
+    const priceEst = rawPriceEstimate || (priceNum ? `${currencyPrefix}${priceNum}` : 'Quoted');
+    return { priceEstimate: priceEst, priceNumeric: priceNum };
   }
 
   private extractNumber(str: string | undefined): number | undefined {

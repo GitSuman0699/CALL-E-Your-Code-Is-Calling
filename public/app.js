@@ -646,6 +646,14 @@ function startWorkingTimer(customStart) {
   const pillContainer = $('#thread-bot-status-container');
   if (pillContainer) pillContainer.classList.remove('hidden-view');
 
+  const workingPill = $('#thread-working-pill');
+  if (workingPill && !$('#thread-working-timer')) {
+    workingPill.innerHTML = `
+      <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin"></span>
+      <span id="thread-working-timer">Working for 1s</span>
+    `;
+  }
+
   const update = () => {
     const timerEl = $('#thread-working-timer');
     if (timerEl && threadStartTime) {
@@ -684,9 +692,9 @@ function renderThreadSwarm(results) {
 
   // Update Bot Status Pill & layout visibility based on overall swarm state
   const isAllInitializing = entries.every(([, r]) => r.status === 'initializing');
-  const isAnyDialing = entries.some(([, r]) => r.status === 'dialing');
-  const isAnyRinging = entries.some(([, r]) => r.status === 'ringing');
   const isAnyInCall = entries.some(([, r]) => ['in-call', 'in-progress'].includes(r.status));
+  const isAnyRinging = entries.some(([, r]) => r.status === 'ringing');
+  const isAnyDialing = entries.some(([, r]) => r.status === 'dialing');
   const isAllCompleted = entries.length > 0 && entries.every(([, r]) => ['completed', 'quoted', 'failed', 'refused', 'no-answer', 'error'].includes(r.status));
 
   if (isAllInitializing) {
@@ -715,7 +723,12 @@ function renderThreadSwarm(results) {
     }
 
     if (workingPill) {
-      if (isAnyRinging) {
+      if (isAnyInCall) {
+        workingPill.innerHTML = `
+          <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+          <span>Negotiating live swarm...</span>
+        `;
+      } else if (isAnyRinging) {
         workingPill.innerHTML = `
           <span class="material-symbols-outlined text-[15px] text-amber-500 animate-bounce">notifications_active</span>
           <span>Phone ringing...</span>
@@ -724,11 +737,6 @@ function renderThreadSwarm(results) {
         workingPill.innerHTML = `
           <span class="w-3.5 h-3.5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin"></span>
           <span>Connecting carrier...</span>
-        `;
-      } else if (isAnyInCall) {
-        workingPill.innerHTML = `
-          <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-          <span>Negotiating live swarm...</span>
         `;
       } else {
         workingPill.innerHTML = `
@@ -954,8 +962,8 @@ function renderVendorDetail(vendorName, results, bestVendorName) {
     }
     if (bookBtn) {
       bookBtn.disabled = false;
-      bookBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">contact_phone</span><span>Contact &amp; Book</span>';
-      bookBtn.className = 'flex-1 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5';
+      bookBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">call</span><span>Contact &amp; Book</span>';
+      bookBtn.className = 'flex-1 bg-gray-900 hover:bg-black text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]';
     }
   } else if (isLive) {
     if (priceEl) {
@@ -1131,31 +1139,50 @@ function getBestVoice(role) {
   const voices = window.speechSynthesis.getVoices() || [];
   if (voices.length === 0) return null;
 
+  // Filter out ancient robotic desktop synthesizers if modern natural/online/neural voices exist
+  const isNatural = (v) => 
+    v.name.includes('Natural') || 
+    v.name.includes('Online') || 
+    v.name.includes('Google') || 
+    v.name.includes('Neural') || 
+    v.name.includes('Premium');
+
+  const naturalVoices = voices.filter(isNatural);
+  const nonDesktopVoices = voices.filter(v => !v.name.includes('Desktop'));
+
   const enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
-  const pool = enVoices.length > 0 ? enVoices : voices;
+  const naturalEnVoices = naturalVoices.filter(v => v.lang && v.lang.startsWith('en'));
+  const cleanEnVoices = nonDesktopVoices.filter(v => v.lang && v.lang.startsWith('en'));
+
+  const pool = naturalEnVoices.length > 0 ? naturalEnVoices : (cleanEnVoices.length > 0 ? cleanEnVoices : (enVoices.length > 0 ? enVoices : voices));
 
   if (role === 'agent') {
-    // Prefer clear natural female/assistant voice
+    // Professional, crisp assistant voice (Jenny, Aria, Samantha, Google US English, Ava)
     return pool.find(v => 
-      v.name.includes('Natural') || 
       v.name.includes('Jenny') || 
       v.name.includes('Aria') || 
       v.name.includes('Samantha') || 
       v.name.includes('Google US English') || 
       v.name.includes('Ava') || 
+      v.name.includes('Zira') ||
       v.name.includes('Female')
     ) || pool[0];
   } else {
-    // Prefer clear natural male/human voice
+    // Warm, realistic human voice for contractor/customer (Christopher, Eric, Guy, Andrew, Ryan, Google UK, Daniel, Alex)
     return pool.find(v => 
-      (v.name.includes('Natural') && (v.name.includes('Guy') || v.name.includes('David') || v.name.includes('Ryan'))) ||
+      v.name.includes('Christopher') || 
+      v.name.includes('Eric') || 
       v.name.includes('Guy') || 
-      v.name.includes('David') || 
-      v.name.includes('Alex') || 
-      v.name.includes('Daniel') || 
+      v.name.includes('Andrew') || 
+      v.name.includes('Ryan') || 
+      v.name.includes('Steffan') || 
       v.name.includes('Google UK English Male') || 
-      v.name.includes('Male')
-    ) || pool[pool.length > 1 ? 1 : 0];
+      v.name.includes('Google US English') || 
+      v.name.includes('Daniel') || 
+      v.name.includes('Alex') || 
+      v.name.includes('Mark') || 
+      (!v.name.includes('Desktop') && v.name.includes('Male'))
+    ) || pool.find(v => !v.name.includes('Desktop')) || pool[pool.length > 1 ? 1 : 0];
   }
 }
 
@@ -1193,18 +1220,46 @@ function extractVendorTurns(r, promptText) {
   const timeline = r?.timeline || '2-3 days';
   const evidence = r?.evidence || r?.summary || '';
 
-  // Extract quotes from verbatim evidence if present
-  const rawQuotes = typeof evidence === 'string' ? evidence.match(/"([^"]+)"/g) : null;
-  const quotes = rawQuotes ? rawQuotes.map(q => q.replace(/^"|"$/g, '').trim()).filter(q => q.length > 5) : [];
+  // 1. Extract distinct quotes accurately (handles semicolon-delimited, quote-wrapped, or multiline strings)
+  const cleanEvidence = typeof evidence === 'string' ? evidence.trim() : '';
+  const quoteMatches = cleanEvidence.match(/"([^"]+)"/g);
+  let quotes = [];
 
-  const priceQuote = quotes.find(q => q.includes('$') || q.includes('₹') || q.includes('cost') || q.includes('price') || q.includes('charge')) 
-    || (r?.quote ? `The estimated total price will be ${r.quote}.` : null);
+  if (quoteMatches && quoteMatches.length > 0) {
+    quotes = quoteMatches.map(q => q.replace(/^["'\s]+|["'\s]+$/g, '').trim()).filter(q => q.length > 3);
+  } else if (cleanEvidence) {
+    quotes = cleanEvidence
+      .split(/\s*;\s*|\n+/)
+      .map(q => q.replace(/^["'\s]+|["'\s]+$/g, '').trim())
+      .filter(q => q.length > 3);
+  }
 
-  const timelineQuote = quotes.find(q => q.includes('day') || q.includes('start') || q.includes('August') || q.includes('week') || q.includes('time')) 
-    || (r?.timeline ? `I can start ${r.timeline}.` : null);
+  // 2. Select distinct non-repeating quotes for each conversational turn
+  let timelineQuote = null;
+  let priceQuote = null;
+  let termsQuote = null;
 
-  const termsQuote = quotes.find(q => q.includes('hidden') || q.includes('material') || q.includes('warranty') || q.includes('labor'))
-    || (r?.summary || 'No hidden charges. Standard terms apply.');
+  if (quotes.length === 1) {
+    priceQuote = quotes[0];
+    timelineQuote = `I can start ${timeline} and it will take around 2-3 days.`;
+    termsQuote = 'Standard emulsion with ceiling primer coat. Free touch-up included.';
+  } else if (quotes.length >= 2) {
+    timelineQuote = quotes.find(q => (q.toLowerCase().includes('start') || q.toLowerCase().includes('day') || q.toLowerCase().includes('august') || q.toLowerCase().includes('week') || q.toLowerCase().includes('timeline')) && !q.includes('$') && !q.includes('₹')) || quotes[0];
+    priceQuote = quotes.find(q => q !== timelineQuote && (q.includes('$') || q.includes('₹') || q.toLowerCase().includes('cost') || q.toLowerCase().includes('labour') || q.toLowerCase().includes('price'))) || quotes[1] || `The total cost estimate is ${price}.`;
+    termsQuote = quotes.find(q => q !== timelineQuote && q !== priceQuote && (q.toLowerCase().includes('discount') || q.toLowerCase().includes('material') || q.toLowerCase().includes('warranty') || q.toLowerCase().includes('hidden') || q.toLowerCase().includes('extra'))) || quotes[2] || 'No hidden charges. Standard terms and warranty apply.';
+  }
+
+  if (!timelineQuote) timelineQuote = `I am available and it will take around ${timeline}.`;
+  if (!priceQuote) priceQuote = `The total cost estimate is ${price}.`;
+  if (!termsQuote) termsQuote = 'No hidden charges. Standard materials and warranty included.';
+
+  // Safeguard: Ensure no two turns share identical text
+  if (priceQuote === timelineQuote) {
+    timelineQuote = `I can start ${timeline} and complete within 2 days.`;
+  }
+  if (termsQuote === priceQuote || termsQuote === timelineQuote) {
+    termsQuote = 'All materials, labor, and warranty are included as discussed.';
+  }
 
   const turns = [
     {
@@ -1230,7 +1285,7 @@ function extractVendorTurns(r, promptText) {
     },
     {
       role: 'user',
-      text: timelineQuote || `I am available and it will take around ${timeline}.`,
+      text: timelineQuote,
       timeRange: '00:00:16-00:00:26',
       latency: '420ms',
       duration: '00:10'
@@ -1244,7 +1299,7 @@ function extractVendorTurns(r, promptText) {
     },
     {
       role: 'user',
-      text: priceQuote || `The total cost estimate is ${price}.`,
+      text: priceQuote,
       timeRange: '00:00:37-00:00:52',
       latency: '480ms',
       duration: '00:15'
@@ -1519,8 +1574,8 @@ function speakTurn(index) {
   }
 
   const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
-  utterance.rate = (t.role === 'agent' ? 1.0 : 0.95) * audioPlaybackSpeed;
-  utterance.pitch = t.role === 'agent' ? 1.1 : 0.9;
+  utterance.rate = (t.role === 'agent' ? 1.02 : 1.0) * audioPlaybackSpeed;
+  utterance.pitch = t.role === 'agent' ? 1.04 : 1.0;
   utterance.lang = 'en-US';
 
   const bestVoice = getBestVoice(t.role);
@@ -1787,9 +1842,10 @@ function openBookingDossierModal(vendorName) {
   const cleanDigits = unmaskedPhone.replace(/[^\d]/g, '');
 
   const price = formatDisplayPrice(r.quote || 'As discussed');
-  const timeline = r.timeline || '2-3 Days';
+  const timeline = r.timeline || 'Within 2-3 Days';
   const terms = r.providerNotes || r.summary || 'Standard terms confirmed during phone negotiation.';
-  const evidence = r.evidence || r.summary || 'Verbatim quote confirmed during AI call.';
+  const rawEvidence = r.evidence || r.summary || 'Verbatim quote confirmed during AI call.';
+  const cleanEvidence = rawEvidence.replace(/^["'\s]+|["'\s]+$/g, '').replace(/";\s*"/g, ' • ').replace(/"/g, '');
 
   currentDossierData = {
     vendorName: targetName,
@@ -1797,7 +1853,7 @@ function openBookingDossierModal(vendorName) {
     price,
     timeline,
     terms,
-    evidence,
+    evidence: cleanEvidence,
     prompt: activeThread.prompt || ''
   };
 
@@ -1815,7 +1871,7 @@ function openBookingDossierModal(vendorName) {
   if (priceEl) priceEl.textContent = price;
   if (timelineEl) timelineEl.textContent = timeline;
   if (termsEl) termsEl.textContent = terms;
-  if (evidenceEl) evidenceEl.textContent = `"${evidence}"`;
+  if (evidenceEl) evidenceEl.textContent = `"${cleanEvidence}"`;
 
   if (callLink) {
     callLink.href = `tel:${unmaskedPhone}`;

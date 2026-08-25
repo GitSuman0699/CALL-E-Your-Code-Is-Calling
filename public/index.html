@@ -220,12 +220,12 @@
   </aside>
 
   <!-- ─── Main Content Viewport ──────────────────────────────────────── -->
-  <div class="ml-64 flex-1 flex flex-col h-screen relative bg-white">
+  <div class="ml-64 flex-1 flex flex-col h-screen relative bg-white min-w-0 overflow-x-hidden">
 
     <!-- ═════════════════════════════════════════════════════════════════ -->
     <!-- VIEW 1: HOME VIEW (Minimalist, Clean Centered Vibe)              -->
     <!-- ═════════════════════════════════════════════════════════════════ -->
-    <main id="view-home" class="flex-1 overflow-y-auto p-6 sm:p-12 flex flex-col justify-center items-center">
+    <main id="view-home" class="flex-1 overflow-y-auto p-6 sm:p-12 flex flex-col justify-center items-center min-w-0 w-full">
       <div class="max-w-4xl sm:max-w-[940px] w-full mx-auto space-y-7 -mt-6 px-2 sm:px-4">
 
         <!-- Hero Header with extra bottom space -->
@@ -306,11 +306,11 @@
     <!-- ═════════════════════════════════════════════════════════════════ -->
     <!-- VIEW 2: RECENT THREAD VIEW (Live Swarm & Best Quote Found)        -->
     <!-- ═════════════════════════════════════════════════════════════════ -->
-    <section id="view-thread" class="flex-1 flex flex-col h-full hidden-view font-sans">
+    <section id="view-thread" class="flex-1 flex flex-col h-full hidden-view font-sans min-w-0 w-full overflow-x-hidden">
 
       <!-- Top Thread Header Bar -->
       <header
-        class="bg-[#fafbfc] h-14 flex items-center justify-between px-6 sm:px-8 border-b border-gray-200/80 shrink-0 z-10">
+        class="bg-[#fafbfc] h-14 flex items-center justify-between px-6 sm:px-8 border-b border-gray-200/80 shrink-0 z-10 min-w-0">
         <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-4">
           <span class="material-symbols-outlined text-gray-400 text-[18px] font-light shrink-0">forum</span>
           <h2 class="text-xs sm:text-[13px] font-medium text-gray-800 truncate" id="top-bar-title">
@@ -327,13 +327,13 @@
       </header>
 
       <!-- Scrollable Thread Body -->
-      <div class="flex-1 overflow-y-auto px-6 sm:px-12 py-6 pb-12 space-y-6">
+      <div class="flex-1 overflow-y-auto px-6 sm:px-12 py-6 pb-12 space-y-6 min-w-0">
 
         <!-- User Prompt Speech Bubble (Image 1) -->
-        <div class="flex justify-end">
+        <div class="flex justify-end min-w-0">
           <div
-            class="bg-[#f0f4f9] text-gray-900 rounded-2xl px-5 py-3.5 max-w-2xl border border-gray-200/50 shadow-2xs">
-            <p class="text-xs sm:text-[13px] leading-relaxed font-normal" id="thread-user-prompt">
+            class="bg-[#f0f4f9] text-gray-900 rounded-2xl px-5 py-3.5 max-w-2xl border border-gray-200/50 shadow-2xs break-words">
+            <p class="text-xs sm:text-[13px] leading-relaxed font-normal break-words" id="thread-user-prompt">
               Call and inquire if they are available to paint a 3BHK apartment at the earliest. Ask the estimated total price and completion timeline
             </p>
           </div>
@@ -442,8 +442,8 @@
                   <span>View Full Conversation</span>
                 </button>
                 <button type="button" id="btn-detail-confirm-booking"
-                  class="flex-1 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5">
-                  <span class="material-symbols-outlined text-[15px]">contact_phone</span>
+                  class="flex-1 bg-gray-900 hover:bg-black text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                  <span class="material-symbols-outlined text-[15px]">call</span>
                   <span>Contact &amp; Book</span>
                 </button>
               </div>
@@ -460,87 +460,93 @@
 
   <!-- ─── Booking & Contact Dossier Modal (Human Hand-Off) ─────────────── -->
   <div id="booking-dossier-modal" class="modal-overlay hidden-view">
-    <div class="modal-card max-w-lg w-full bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden font-sans flex flex-col max-h-[92vh]">
+    <div class="modal-card max-w-[520px] w-full bg-white rounded-3xl border border-gray-200/90 shadow-2xl overflow-hidden font-sans flex flex-col">
       
       <!-- Top Header -->
-      <div class="px-6 py-4 border-b border-gray-100 bg-[#fafbfc] flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-            <span class="material-symbols-outlined text-[20px]">verified</span>
+      <div class="px-6 sm:px-7 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100/80 flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs">
+            <span class="material-symbols-outlined text-[22px]">verified_user</span>
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-semibold text-gray-900" id="dossier-vendor-name">Urban Colors Ltd.</h3>
-            <p class="text-xs text-gray-500">Negotiated Deal Hand-off Dossier</p>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-semibold text-gray-900 tracking-tight" id="dossier-vendor-name">Urban Colors Ltd.</h3>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-medium">
+                Verified Deal
+              </span>
+            </div>
+            <p class="text-xs text-gray-400 font-normal mt-0.5">Negotiation summary &amp; direct contact</p>
           </div>
         </div>
         <button type="button" id="btn-close-dossier"
-          class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors cursor-pointer"
+          class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors cursor-pointer"
           title="Close">
-          <span class="material-symbols-outlined text-[20px]">close</span>
+          <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       <!-- Body Content -->
-      <div class="p-6 space-y-4 overflow-y-auto">
+      <div class="p-6 sm:p-7 space-y-5 max-h-[75vh] overflow-y-auto">
         
-        <!-- Direct Phone & Quick Action Card -->
-        <div class="bg-gray-900 text-white rounded-2xl p-4.5 space-y-3.5 shadow-md">
+        <!-- Hero Price & Timeline Card with Generous Padding -->
+        <div class="bg-gradient-to-br from-gray-50/90 to-[#f8fafc] border border-gray-200/80 rounded-2xl p-5 sm:p-6 space-y-2.5">
+          <div class="flex items-start justify-between gap-4">
+            <div class="shrink-0">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400 block mb-1">Negotiated Quote</span>
+              <span class="text-2xl sm:text-[28px] font-bold text-gray-900 font-sans tracking-tight" id="dossier-price">$4,300</span>
+            </div>
+            <div class="text-right max-w-[62%]">
+              <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400 block mb-1.5">Estimated Timeline</span>
+              <div class="inline-flex items-center text-right px-3.5 py-1.5 rounded-xl bg-white border border-gray-200/90 text-xs font-medium text-gray-700 shadow-2xs leading-relaxed" id="dossier-timeline">
+                Within 2-3 Days
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Direct Contact Card -->
+        <div class="bg-[#f8fafc] border border-gray-200/80 rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400">Direct Phone Number</span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-medium">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              Verified Contact
-            </span>
-          </div>
-
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-white" id="dossier-unmasked-phone">
-              +91 80160 86948
-            </span>
             <button type="button" id="btn-dossier-copy-phone"
-              class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 text-xs font-medium transition-colors cursor-pointer inline-flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[14px]">content_copy</span>
+              class="px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 text-[11px] font-medium transition-colors cursor-pointer inline-flex items-center gap-1 shadow-2xs">
+              <span class="material-symbols-outlined text-[13px]">content_copy</span>
               <span>Copy</span>
             </button>
+          </div>
+
+          <div class="font-mono text-xl font-bold tracking-normal text-gray-900" id="dossier-unmasked-phone">
+            +91 80160 86948
           </div>
 
           <!-- Quick Action Buttons -->
           <div class="grid grid-cols-2 gap-2.5 pt-1">
             <a id="dossier-call-link" href="#"
-              class="bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 rounded-xl text-xs font-medium transition-colors shadow-xs flex items-center justify-center gap-1.5 text-center">
+              class="bg-gray-900 hover:bg-black text-white py-2.5 px-3 rounded-xl text-xs font-medium transition-all shadow-xs flex items-center justify-center gap-2 text-center active:scale-[0.98]">
               <span class="material-symbols-outlined text-[16px]">call</span>
-              <span>Call Now</span>
+              <span>Call Provider</span>
             </a>
             <a id="dossier-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer"
-              class="bg-[#25D366] hover:bg-[#20bd5a] text-white py-2.5 px-3 rounded-xl text-xs font-medium transition-colors shadow-xs flex items-center justify-center gap-1.5 text-center">
+              class="bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#0d7348] border border-[#25D366]/30 py-2.5 px-3 rounded-xl text-xs font-medium transition-all shadow-2xs flex items-center justify-center gap-2 text-center active:scale-[0.98]">
               <span class="material-symbols-outlined text-[16px]">chat</span>
-              <span>WhatsApp Message</span>
+              <span>Message on WhatsApp</span>
             </a>
           </div>
         </div>
 
-        <!-- Deal Summary / Negotiation Receipt -->
-        <div class="bg-[#fafbfc] border border-gray-200/70 rounded-2xl p-4 space-y-3">
-          <div class="flex items-center justify-between border-b border-gray-200/60 pb-2.5">
-            <span class="text-xs text-gray-500 font-medium">Negotiated Price</span>
-            <span class="text-base font-bold text-gray-900 font-sans" id="dossier-price">₹11,800</span>
+        <!-- Agreed Scope & Terms -->
+        <div class="space-y-1.5">
+          <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400 block px-1">Agreed Terms &amp; Scope</span>
+          <div class="bg-white border border-gray-200/80 rounded-xl p-3.5 text-xs text-gray-700 leading-relaxed" id="dossier-terms">
+            Standard emulsion with ceiling primer coat. Free touch-up within 1 year warranty.
           </div>
+        </div>
 
-          <div class="flex items-center justify-between border-b border-gray-200/60 pb-2.5">
-            <span class="text-xs text-gray-500 font-medium">Timeline / Start</span>
-            <span class="text-xs font-medium text-gray-800" id="dossier-timeline">Within 2-3 Days</span>
-          </div>
-
-          <div class="space-y-1 border-b border-gray-200/60 pb-2.5">
-            <span class="text-[11px] font-medium uppercase text-gray-400 block">Agreed Terms</span>
-            <p class="text-xs text-gray-700 leading-relaxed" id="dossier-terms">
-              Standard emulsion with ceiling primer coat. Free touch-up within 1 year warranty.
-            </p>
-          </div>
-
-          <div class="space-y-1">
-            <span class="text-[11px] font-medium uppercase text-gray-400 block">Verbatim Spoken Evidence</span>
-            <p class="text-xs text-gray-600 italic leading-relaxed bg-white p-2.5 rounded-xl border border-gray-200/60" id="dossier-evidence">
+        <!-- Verbatim Spoken Evidence Quote -->
+        <div class="space-y-1.5">
+          <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400 block px-1">Spoken Audio Evidence</span>
+          <div class="bg-[#f0f4f9]/70 border border-gray-200/60 rounded-xl p-3.5 text-xs text-gray-600 italic leading-relaxed relative" id="dossier-evidence-container">
+            <p id="dossier-evidence">
               "Yes, we can do it for 11,800 final price. We can start immediately and finish within 2-3 days."
             </p>
           </div>
@@ -549,10 +555,10 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-3.5 border-t border-gray-100 bg-[#fafbfc] flex items-center justify-between">
+      <div class="px-6 py-4 border-t border-gray-100 bg-[#fafbfc] flex items-center justify-between">
         <button type="button" id="btn-dossier-copy-all"
-          class="px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[15px]">assignment</span>
+          class="px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[15px] text-gray-500">assignment</span>
           <span>Copy Full Deal Sheet</span>
         </button>
         <button type="button" id="btn-dossier-done"
@@ -743,13 +749,7 @@
         </div>
 
         <div class="flex items-center gap-1 text-gray-400">
-          <button type="button" id="btn-conv-prev" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer" title="Previous Vendor Turn">
-            <span class="material-symbols-outlined text-lg">expand_less</span>
-          </button>
-          <button type="button" id="btn-conv-next" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer" title="Next Vendor Turn">
-            <span class="material-symbols-outlined text-lg">expand_more</span>
-          </button>
-          <button id="btn-close-conv-modal" type="button" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors ml-1 cursor-pointer">
+          <button id="btn-close-conv-modal" type="button" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors cursor-pointer" title="Close">
             <span class="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
