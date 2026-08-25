@@ -32,6 +32,18 @@ quotesRouter.post('/', async (req, res) => {
       });
     }
 
+    // Validate phone number format for each vendor
+    for (const v of vendors) {
+      const cleaned = (v.phone || '').replace(/[\s\(\)\-\.]/g, '').trim();
+      if (!cleaned.startsWith('+') || !/^\+[1-9]\d{7,14}$/.test(cleaned)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid phone number "${v.phone}" for ${v.name || 'vendor'}. Phone numbers must include country code starting with '+' followed by 8-15 digits (e.g. +918016086948 or +14155550100).`,
+        });
+      }
+      v.phone = cleaned;
+    }
+
     const isSimulate = mode === 'simulate' || Boolean(dryRunSimulate);
 
     const job = await quoteOrchestrator.startQuoteHunt({

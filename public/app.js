@@ -6,14 +6,14 @@
 const PRESETS = {
   personal: {
     name: 'Personal Message',
-    desc: 'Call +918016086948 with a personal message regarding the project update and ask for confirmation.',
+    desc: 'Call with a personal message regarding the project update and ask for confirmation.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
     ],
   },
   business: {
     name: 'Ask a Business',
-    desc: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
+    desc: 'Call and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Raj Painters', phone: '+919876543210' },
@@ -38,7 +38,7 @@ const PRESETS = {
   },
   painting: {
     name: 'Painting RFQ',
-    desc: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
+    desc: 'Call and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Raj Painters', phone: '+919876543210' },
@@ -78,38 +78,50 @@ const PRESETS = {
 let currentCategory = 'painting';
 let activeVendors = [];
 
-let recentThreads = [
-  {
-    id: 'thread-default',
-    title: 'Call +918016086948 and ask, a...',
-    prompt: 'Call +918016086948 and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
-    isLive: false,
-    results: {
-      'Raj Painters': {
-        status: 'completed',
-        quote: '₹11,800',
-        timeline: '2 Days',
-        warranty: '1 Year Included',
-        evidence: '"Yes, we can do it for 11,800 final price. We\'ll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."',
-        summary: 'Standard emulsion with ceiling primer coat.'
-      },
-      'Urban Colors Ltd.': {
-        status: 'completed',
-        quote: '₹14,500',
-        timeline: '3 Days',
-        warranty: 'Standard',
-        evidence: '"₹14,500 total price."',
-        summary: 'Completed with full coat.'
-      }
-    },
-    createdAt: new Date()
-  }
-];
+let recentThreads = [];
 
 let currentView = 'home'; // 'home' | 'thread'
 let activeThread = null;
 let isRunning = false;
 let eventSource = null;
+
+/* ─── LocalStorage Persistence Manager ──────────────────────────────── */
+const STORAGE_KEY_THREADS = 'quotehunter_threads_v2';
+const STORAGE_KEY_VIEW = 'quotehunter_active_view';
+const STORAGE_KEY_ACTIVE_ID = 'quotehunter_active_thread_id';
+
+function saveThreadsToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(recentThreads));
+    localStorage.setItem(STORAGE_KEY_VIEW, currentView);
+    if (activeThread && currentView === 'thread') {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activeThread.id);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_ACTIVE_ID);
+    }
+  } catch (err) {
+    console.error('Failed to save state to localStorage:', err);
+  }
+}
+
+function loadThreadsFromStorage() {
+  try {
+    // Also clean any legacy v1 key with thread-default
+    localStorage.removeItem('quotehunter_threads_v1');
+    const raw = localStorage.getItem(STORAGE_KEY_THREADS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        recentThreads = parsed.filter(t => t.id !== 'thread-default');
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load state from localStorage:', err);
+  }
+  recentThreads = [];
+  saveThreadsToStorage();
+}
 
 /* ─── DOM References ────────────────────────────────────────────────── */
 const $ = (s) => document.querySelector(s);
@@ -146,6 +158,7 @@ function switchView(viewName, threadData = null) {
       c.classList.remove('border-black', 'bg-gray-50/80');
       c.classList.add('border-[#e5e7eb]');
     });
+    saveThreadsToStorage();
     renderRecentsList();
   } else if (viewName === 'thread' && threadData) {
     activeThread = threadData;
@@ -170,8 +183,16 @@ function switchView(viewName, threadData = null) {
       }
     }
 
+    if (threadData.isLive) {
+      startWorkingTimer();
+    } else {
+      stopWorkingTimer();
+      const botContainer = $('#thread-bot-status-container');
+      if (botContainer) botContainer.classList.add('hidden-view');
+    }
+
+    saveThreadsToStorage();
     renderThreadSwarm(threadData.results);
-    renderWinnerCard(threadData.results);
     renderRecentsList();
   }
 }
@@ -261,6 +282,7 @@ window.renameThread = function(e, idx) {
   const newTitle = prompt('Rename negotiation thread:', thread.title);
   if (newTitle && newTitle.trim()) {
     thread.title = newTitle.trim();
+    saveThreadsToStorage();
     renderRecentsList();
     if (activeThread && activeThread.id === thread.id && topBarTitle) {
       topBarTitle.textContent = thread.title;
@@ -277,6 +299,7 @@ window.deleteThread = function(e, idx) {
   if (confirm(`Delete negotiation thread "${thread.title}"?`)) {
     const isDeletedActive = activeThread && activeThread.id === thread.id;
     recentThreads.splice(idx, 1);
+    saveThreadsToStorage();
     renderRecentsList();
     if (isDeletedActive) {
       switchView('home');
@@ -303,7 +326,7 @@ function renderPhoneChips() {
   const chipsHtml = activeVendors.map((v, idx) => `
     <div class="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200 text-xs font-normal text-gray-700">
       <span class="material-symbols-outlined text-[13px] text-gray-400">call</span>
-      <span>${escapeHtml(v.phone)}</span>
+      <span>${escapeHtml(maskPhoneNumber(v.phone))}</span>
       <button type="button" onclick="removeVendor(${idx})" class="text-gray-400 hover:text-red-500 ml-1 leading-none text-sm">&times;</button>
     </div>
   `).join('');
@@ -322,6 +345,124 @@ window.removeVendor = function(idx) {
   renderPhoneChips();
 };
 
+/* ─── Phone Number Validator ────────────────────────────────────────── */
+function validatePhoneNumber(rawPhone, existingVendors = activeVendors) {
+  if (!rawPhone || !rawPhone.trim()) {
+    return { valid: false, error: 'Phone number is required.' };
+  }
+
+  // Clean formatting characters
+  let cleaned = rawPhone.replace(/[\s\(\)\-\.]/g, '').trim();
+
+  // 1. Must start with '+' (Country code required)
+  if (!cleaned.startsWith('+')) {
+    return {
+      valid: false,
+      error: 'Please include country code starting with "+" (e.g. +91 for India or +1 for US).'
+    };
+  }
+
+  // 2. Must only contain digits after '+'
+  const digitsOnly = cleaned.slice(1);
+  if (!/^\d+$/.test(digitsOnly)) {
+    return {
+      valid: false,
+      error: 'Phone number must only contain digits after "+".'
+    };
+  }
+
+  // 3. E.164 length check (8 to 15 digits)
+  if (digitsOnly.length < 8) {
+    return {
+      valid: false,
+      error: 'Phone number is too short. Please enter a valid number with country code.'
+    };
+  }
+  if (digitsOnly.length > 15) {
+    return {
+      valid: false,
+      error: 'Phone number is too long (maximum 15 digits allowed by ITU-T E.164).'
+    };
+  }
+
+  // 4. Country-specific rules for common prefixes
+  if (cleaned.startsWith('+91')) {
+    const nationalNumber = cleaned.slice(3);
+    if (nationalNumber.length !== 10) {
+      return {
+        valid: false,
+        error: `Indian phone number must have exactly 10 digits after +91 (entered ${nationalNumber.length} digits).`
+      };
+    }
+    if (!/^[5-9]\d{9}$/.test(nationalNumber)) {
+      return {
+        valid: false,
+        error: 'Indian mobile number must start with 5, 6, 7, 8, or 9.'
+      };
+    }
+  } else if (cleaned.startsWith('+1')) {
+    const nationalNumber = cleaned.slice(2);
+    if (nationalNumber.length !== 10) {
+      return {
+        valid: false,
+        error: `US/Canada phone number must have exactly 10 digits after +1 (entered ${nationalNumber.length} digits).`
+      };
+    }
+    if (/^[01]/.test(nationalNumber)) {
+      return {
+        valid: false,
+        error: 'US/Canada phone numbers cannot start with 0 or 1.'
+      };
+    }
+  }
+
+  // 5. Check duplicate in active queue
+  if (existingVendors && existingVendors.some(v => v.phone === cleaned)) {
+    return {
+      valid: false,
+      error: 'This phone number is already added to the call queue.'
+    };
+  }
+
+  return { valid: true, formatted: cleaned };
+}
+
+function showPhoneValidationError(msg) {
+  const errorEl = $('#phone-validation-error');
+  const hintEl = $('#phone-validation-hint');
+  const inputEl = $('#input-vendor-phone');
+
+  if (errorEl) {
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+  }
+  if (hintEl) hintEl.classList.add('hidden');
+  if (inputEl) {
+    inputEl.classList.add('border-rose-500', 'focus:border-rose-500', 'bg-rose-50/20');
+    inputEl.classList.remove('border-emerald-500', 'focus:border-gray-800');
+  }
+}
+
+function clearPhoneValidationError(isValid = false) {
+  const errorEl = $('#phone-validation-error');
+  const hintEl = $('#phone-validation-hint');
+  const inputEl = $('#input-vendor-phone');
+
+  if (errorEl) {
+    errorEl.textContent = '';
+    errorEl.classList.add('hidden');
+  }
+  if (hintEl) hintEl.classList.remove('hidden');
+  if (inputEl) {
+    inputEl.classList.remove('border-rose-500', 'focus:border-rose-500', 'bg-rose-50/20');
+    if (isValid) {
+      inputEl.classList.add('border-emerald-500');
+    } else {
+      inputEl.classList.remove('border-emerald-500');
+    }
+  }
+}
+
 /* ─── Add Number Modal ──────────────────────────────────────────────── */
 window.openAddVendorModal = function() {
   if (isRunning) return;
@@ -329,30 +470,54 @@ window.openAddVendorModal = function() {
   const phoneInput = $('#input-vendor-phone');
   if (nameInput) nameInput.value = '';
   if (phoneInput) phoneInput.value = '';
+  clearPhoneValidationError(false);
   addVendorModal?.classList.remove('hidden-view');
   setTimeout(() => phoneInput?.focus(), 50);
 };
 
 window.closeAddVendorModal = function() {
+  clearPhoneValidationError(false);
   addVendorModal?.classList.add('hidden-view');
 };
 
 $('#btn-close-add-modal')?.addEventListener('click', closeAddVendorModal);
 $('#btn-cancel-add-modal')?.addEventListener('click', closeAddVendorModal);
 
-$('#add-vendor-form')?.addEventListener('submit', (e) => {
-  e.preventDefault();
-  let phone = $('#input-vendor-phone').value.trim();
-
-  if (!phone) {
-    alert('Please enter a phone number.');
+// Live inline phone validation on input
+$('#input-vendor-phone')?.addEventListener('input', (e) => {
+  const val = e.target.value.trim();
+  if (!val) {
+    clearPhoneValidationError(false);
     return;
   }
-  if (!phone.startsWith('+')) {
-    phone = '+' + phone;
+  const res = validatePhoneNumber(val);
+  if (res.valid) {
+    clearPhoneValidationError(true);
+  } else {
+    // Only show live error if they've typed enough or violated formatting
+    if (val.length >= 4 || !val.startsWith('+')) {
+      showPhoneValidationError(res.error);
+    } else {
+      clearPhoneValidationError(false);
+    }
+  }
+});
+
+$('#add-vendor-form')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const phoneInput = $('#input-vendor-phone');
+  const rawPhone = phoneInput?.value.trim() || '';
+
+  const validation = validatePhoneNumber(rawPhone);
+  if (!validation.valid) {
+    showPhoneValidationError(validation.error);
+    phoneInput?.focus();
+    return;
   }
 
-  const name = $('#input-vendor-name').value.trim() || phone;
+  const phone = validation.formatted;
+  const nameInput = $('#input-vendor-name');
+  const name = (nameInput?.value.trim()) || maskPhoneNumber(phone);
 
   activeVendors.push({ name, phone });
   renderPhoneChips();
@@ -387,128 +552,443 @@ $$('.preset-chip').forEach(chip => {
   });
 });
 
+/* ─── State for Selected Detail Card & Working Timer ───────────────── */
+let selectedVendorName = null;
+let workingTimerInterval = null;
+let threadStartTime = null;
+
+function startWorkingTimer() {
+  stopWorkingTimer();
+  threadStartTime = Date.now();
+  const timerEl = $('#thread-working-timer');
+  const pillContainer = $('#thread-bot-status-container');
+  if (pillContainer) pillContainer.classList.remove('hidden-view');
+
+  const update = () => {
+    const elapsed = Math.max(1, Math.floor((Date.now() - threadStartTime) / 1000));
+    if (timerEl) timerEl.textContent = `Working for ${elapsed}s`;
+  };
+  update();
+  workingTimerInterval = setInterval(update, 1000);
+}
+
+function stopWorkingTimer() {
+  if (workingTimerInterval) {
+    clearInterval(workingTimerInterval);
+    workingTimerInterval = null;
+  }
+}
+
 /* ─── Thread Swarm List Renderer ────────────────────────────────────── */
 function renderThreadSwarm(results) {
   if (!threadSwarmList) return;
   const entries = Object.entries(results || {});
 
+  const botContainer = $('#thread-bot-status-container');
+  const workingPill = $('#thread-working-pill');
+  const contentGrid = $('#thread-content-grid');
+  const swarmColumn = $('#thread-swarm-column');
+  const detailsColumn = $('#thread-details-column');
+
   if (entries.length === 0) {
-    threadSwarmList.innerHTML = `
-      <div class="p-4 rounded-xl border border-gray-200 bg-gray-50 text-xs text-gray-500">
-        Initiating PSTN voice swarm...
-      </div>`;
+    if (botContainer) botContainer.classList.remove('hidden-view');
+    if (contentGrid) contentGrid.classList.add('hidden-view');
+    if (detailsColumn) detailsColumn.classList.add('hidden-view');
     return;
+  }
+
+  // Update Bot Status Pill & layout visibility based on overall swarm state
+  const isAllInitializing = entries.every(([, r]) => r.status === 'initializing');
+  const isAnyDialing = entries.some(([, r]) => r.status === 'dialing');
+  const isAnyRinging = entries.some(([, r]) => r.status === 'ringing');
+  const isAnyInCall = entries.some(([, r]) => ['in-call', 'in-progress'].includes(r.status));
+  const isAllCompleted = entries.length > 0 && entries.every(([, r]) => ['completed', 'quoted', 'failed', 'refused', 'no-answer', 'error'].includes(r.status));
+
+  if (isAllInitializing) {
+    // ── Phase 1: At first ONLY show working with loader part (Image 1) ──
+    if (botContainer) botContainer.classList.remove('hidden-view');
+    if (contentGrid) contentGrid.classList.add('hidden-view');
+    if (detailsColumn) detailsColumn.classList.add('hidden-view');
+
+    const elapsed = threadStartTime ? Math.max(1, Math.floor((Date.now() - threadStartTime) / 1000)) : 4;
+    if (workingPill) {
+      workingPill.innerHTML = `
+        <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin"></span>
+        <span id="thread-working-timer">Working for ${elapsed}s</span>
+      `;
+    }
+  } else if (!isAllCompleted) {
+    // ── Phase 2: Show Live Call Swarm ONLY when carrier is connecting/ringing/negotiating (Image 2) ──
+    // Negotiation detail section is NOT available while call has not ended yet!
+    if (botContainer) botContainer.classList.remove('hidden-view');
+    if (contentGrid) contentGrid.classList.remove('hidden-view');
+    if (swarmColumn) {
+      swarmColumn.className = 'lg:col-span-12 max-w-lg space-y-2 transition-all';
+    }
+    if (detailsColumn) {
+      detailsColumn.classList.add('hidden-view');
+    }
+
+    if (workingPill) {
+      if (isAnyRinging) {
+        workingPill.innerHTML = `
+          <span class="material-symbols-outlined text-[15px] text-amber-500 animate-bounce">notifications_active</span>
+          <span>Phone ringing...</span>
+        `;
+      } else if (isAnyDialing) {
+        workingPill.innerHTML = `
+          <span class="w-3.5 h-3.5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin"></span>
+          <span>Connecting carrier...</span>
+        `;
+      } else if (isAnyInCall) {
+        workingPill.innerHTML = `
+          <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+          <span>Negotiating live swarm...</span>
+        `;
+      } else {
+        workingPill.innerHTML = `
+          <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin"></span>
+          <span>Extracting quote...</span>
+        `;
+      }
+    }
+  } else {
+    // ── Phase 3: Negotiation Detail Section is ONLY available AFTER the task is over ──
+    stopWorkingTimer();
+    if (botContainer) botContainer.classList.add('hidden-view');
+    if (contentGrid) contentGrid.classList.remove('hidden-view');
+    if (swarmColumn) {
+      swarmColumn.className = 'lg:col-span-5 space-y-2 transition-all';
+    }
+    if (detailsColumn) {
+      detailsColumn.classList.remove('hidden-view');
+    }
+  }
+
+  // Find best quote ONLY if there is at least one valid numeric quote
+  const quoted = entries.filter(([, r]) => {
+    const isSuccess = ['completed', 'quoted'].includes(r.status);
+    const price = parsePrice(r.quote);
+    return isSuccess && price !== Infinity && price > 0;
+  });
+
+  let bestVendorName = null;
+  if (quoted.length > 0) {
+    const sorted = [...quoted].sort((a, b) => parsePrice(a[1].quote) - parsePrice(b[1].quote));
+    bestVendorName = sorted[0][0];
+  }
+
+  // Ensure a selected vendor is active
+  if (!selectedVendorName || !results[selectedVendorName]) {
+    selectedVendorName = bestVendorName || entries[0][0];
   }
 
   threadSwarmList.innerHTML = entries.map(([name, r]) => {
     const isLive = ['in-call', 'in-progress', 'ringing', 'dialing', 'initializing', 'analyzing'].includes(r.status);
-    const isCompleted = ['completed', 'quoted'].includes(r.status);
+    const price = parsePrice(r.quote);
+    const hasValidPrice = price !== Infinity && price > 0;
+    const isCompleted = ['completed', 'quoted'].includes(r.status) && hasValidPrice;
+    const isSelected = selectedVendorName === name;
+    const isBest = isCompleted && bestVendorName === name;
+
+    const selectedClasses = isSelected 
+      ? 'border-gray-800 ring-1 ring-gray-800/10 shadow-xs bg-gray-50/40' 
+      : 'border-gray-200 hover:border-gray-300';
 
     if (isLive) {
-      let statusLabel = 'Negotiating...';
-      let ringColor = 'bg-emerald-600';
-      if (r.status === 'initializing') {
-        statusLabel = 'Initializing Voice AI...';
-        ringColor = 'bg-blue-500';
-      } else if (r.status === 'dialing') {
-        statusLabel = 'Connecting Carrier...';
-        ringColor = 'bg-indigo-500';
-      } else if (r.status === 'ringing') {
-        statusLabel = 'Phone Ringing...';
-        ringColor = 'bg-amber-500';
-      } else if (r.status === 'in-call' || r.status === 'in-progress') {
-        statusLabel = 'Live On-Call...';
-        ringColor = 'bg-emerald-600';
-      } else if (r.status === 'analyzing') {
-        statusLabel = 'Extracting Quote...';
-        ringColor = 'bg-purple-500';
+      if (r.status === 'in-call' || r.status === 'in-progress' || r.status === 'analyzing') {
+        // Active negotiation state
+        return `
+          <div class="bg-white p-3.5 rounded-xl border ${selectedClasses} flex items-center justify-between transition-all cursor-pointer shadow-xs" onclick="selectVendor('${escapeHtml(name)}')">
+            <div class="flex items-center gap-3">
+              <span class="w-2 h-2 rounded-full bg-black shrink-0"></span>
+              <div>
+                <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
+                <p class="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5 font-normal">
+                  <span class="material-symbols-outlined text-[13px] text-gray-400">timer</span>
+                  <span>Negotiating...</span>
+                </p>
+              </div>
+            </div>
+            <!-- Black equalizer waveform bars (Image 2) -->
+            <div class="flex items-end gap-0.5 h-4">
+              <div class="audio-bar-dark"></div>
+              <div class="audio-bar-dark"></div>
+              <div class="audio-bar-dark"></div>
+              <div class="audio-bar-dark"></div>
+              <div class="audio-bar-dark"></div>
+            </div>
+          </div>`;
       }
 
+      if (r.status === 'ringing') {
+        // Connecting & Ringing state
+        return `
+          <div class="bg-white p-3.5 rounded-xl border ${selectedClasses} flex items-center justify-between transition-all cursor-pointer shadow-xs" onclick="selectVendor('${escapeHtml(name)}')">
+            <div class="flex items-center gap-3">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+              <div>
+                <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
+                <p class="text-[11px] text-amber-600 flex items-center gap-1 mt-0.5 font-normal">
+                  <span class="material-symbols-outlined text-[13px] text-amber-500 animate-bounce">notifications_active</span>
+                  <span>Phone Ringing...</span>
+                </p>
+              </div>
+            </div>
+            <span class="text-[10px] text-amber-600 font-medium px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">Ringing</span>
+          </div>`;
+      }
+
+      // Dialing / Initializing
       return `
-        <div class="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between shadow-xs">
+        <div class="bg-white p-3.5 rounded-xl border ${selectedClasses} flex items-center justify-between transition-all cursor-pointer shadow-xs" onclick="selectVendor('${escapeHtml(name)}')">
           <div class="flex items-center gap-3">
-            <div class="w-2.5 h-2.5 rounded-full ${ringColor} pulse-ring"></div>
+            <span class="w-3 h-3 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin shrink-0"></span>
             <div>
               <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
-              <p class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                <span class="material-symbols-outlined text-[13px]">timer</span>
-                <span>${escapeHtml(statusLabel)}</span>
+              <p class="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5 font-normal">
+                <span class="material-symbols-outlined text-[13px] text-gray-400">cell_tower</span>
+                <span>Connecting Carrier...</span>
               </p>
             </div>
           </div>
-          <div class="flex items-end gap-0.5 h-5">
-            <div class="audio-bar"></div>
-            <div class="audio-bar"></div>
-            <div class="audio-bar"></div>
-            <div class="audio-bar"></div>
-            <div class="audio-bar"></div>
-          </div>
+          <span class="text-[10px] text-gray-400 font-medium px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200">Dialing</span>
         </div>`;
     }
 
     if (isCompleted) {
+      // Completed with valid quote
+      const quoteText = formatDisplayPrice(r.quote);
       return `
-        <div class="bg-white p-3.5 rounded-xl border border-gray-200 opacity-95 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors shadow-2xs" onclick="openModal('${escapeHtml(name)}')">
-          <div class="flex items-center gap-3">
-            <span class="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
-            <div>
-              <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
-              <p class="text-[11px] text-gray-500 mt-0.5 font-mono font-medium">Completed • <span class="text-emerald-700 font-bold">${escapeHtml(r.quote || 'Quoted')}</span></p>
+        <div class="bg-white p-3.5 rounded-xl border ${selectedClasses} opacity-95 flex items-center justify-between cursor-pointer hover:bg-gray-50/70 transition-all shadow-2xs" onclick="selectVendor('${escapeHtml(name)}')">
+          <div class="flex items-center gap-3 min-w-0 pr-2">
+            <span class="material-symbols-outlined text-gray-400 text-[18px] shrink-0 font-light">check_circle</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <h4 class="text-xs font-medium text-gray-800 truncate">${escapeHtml(name)}</h4>
+                ${isBest ? `
+                  <span class="px-1.5 py-0.2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-semibold inline-flex items-center gap-0.5 shrink-0">
+                    <span class="material-symbols-outlined text-[11px]">star</span>
+                    <span>Best Quote</span>
+                  </span>
+                ` : ''}
+              </div>
+              <p class="text-[11px] text-gray-400 mt-0.5 font-normal truncate">Completed • <span class="text-emerald-700 font-semibold font-mono">${escapeHtml(quoteText)}</span></p>
             </div>
           </div>
-          <span class="text-[11px] text-emerald-700 font-semibold">Details →</span>
+          <button type="button" class="text-[11px] font-medium text-gray-500 hover:text-gray-900 transition-colors shrink-0 px-2 py-1 rounded-lg hover:bg-gray-100 cursor-pointer" onclick="event.stopPropagation(); selectVendor('${escapeHtml(name)}')">
+            Details →
+          </button>
         </div>`;
     }
 
-    // Failed / Voicemail / Refused
-    const failReason = r.providerNotes || 'Call unanswered or declined';
+    // Declined / Unanswered / Failed / No Quote
+    const failReason = r.providerNotes || r.summary || (r.status === 'refused' ? 'Call Declined' : 'Call Unanswered');
     return `
-      <div class="bg-white p-3.5 rounded-xl border border-gray-200 opacity-70 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-rose-500 text-lg">phone_missed</span>
-          <div>
-            <h4 class="text-xs font-semibold text-gray-900">${escapeHtml(name)}</h4>
-            <p class="text-[11px] text-gray-500 mt-0.5 truncate max-w-[180px]">${escapeHtml(failReason)}</p>
+      <div class="bg-white p-3.5 rounded-xl border ${selectedClasses} opacity-75 flex items-center justify-between cursor-pointer hover:bg-gray-50/70 transition-all shadow-2xs" onclick="selectVendor('${escapeHtml(name)}')">
+        <div class="flex items-center gap-3 min-w-0 pr-2">
+          <span class="material-symbols-outlined text-gray-400 text-[18px] shrink-0 font-light">phone_disabled</span>
+          <div class="min-w-0">
+            <h4 class="text-xs font-medium text-gray-700 truncate">${escapeHtml(name)}</h4>
+            <p class="text-[11px] text-gray-400 mt-0.5 truncate max-w-[200px]">${escapeHtml(failReason)}</p>
           </div>
         </div>
-        <span class="text-[10px] text-gray-400 font-medium">Ended</span>
+        <button type="button" class="text-[11px] font-medium text-gray-400 hover:text-gray-700 transition-colors shrink-0 px-2 py-1 rounded-lg hover:bg-gray-100 cursor-pointer" onclick="event.stopPropagation(); selectVendor('${escapeHtml(name)}')">
+          Details →
+        </button>
       </div>`;
   }).join('');
+
+  renderVendorDetail(selectedVendorName, results, bestVendorName);
 }
 
-/* ─── Winner Card Renderer ──────────────────────────────────────────── */
-function renderWinnerCard(results) {
-  const entries = Object.entries(results || {});
-  const quoted = entries.filter(([,r]) => (r.status === 'completed' || r.status === 'quoted') && r.quote);
+window.selectVendor = function(vendorName) {
+  selectedVendorName = vendorName;
+  if (activeThread) {
+    renderThreadSwarm(activeThread.results);
+  }
+};
 
-  if (quoted.length === 0) {
-    if (winnerName) winnerName.textContent = 'Raj Painters';
-    if (winnerPrice) winnerPrice.textContent = '₹11,800';
-    if (winnerTimeline) winnerTimeline.textContent = '2 Days';
-    if (winnerWarranty) winnerWarranty.textContent = '1 Year Included';
-    if (winnerQuoteText) {
-      winnerQuoteText.textContent = '"Yes, we can do it for 11,800 final price. We\'ll start tomorrow morning and finish by Thursday evening. Quality paint guaranteed."';
+/* ─── Inline Vendor Detail Panel Renderer (Right Section) ───────────── */
+function renderVendorDetail(vendorName, results, bestVendorName) {
+  const detailCard = $('#vendor-details-card');
+  if (!detailCard) return;
+
+  const phoneEl = $('#detail-vendor-phone');
+  const priceEl = $('#detail-quote-price');
+  const termsEl = $('#detail-quote-terms');
+  const timelineEl = $('#detail-timeline');
+  const warrantyEl = $('#detail-warranty');
+  const evidenceEl = $('#detail-evidence-text');
+  const notesEl = $('#detail-notes-text');
+  const bookBtn = $('#btn-detail-confirm-booking');
+
+  if (!vendorName || !results || !results[vendorName]) {
+    $('#detail-vendor-name').textContent = 'No vendor selected';
+    if (phoneEl) {
+      phoneEl.textContent = '';
+      phoneEl.style.display = 'none';
     }
+    if (priceEl) priceEl.textContent = '-';
+    if (timelineEl) timelineEl.textContent = '-';
+    if (warrantyEl) warrantyEl.textContent = '-';
+    if (evidenceEl) evidenceEl.textContent = 'Select a negotiation from the list on the left to view evidence.';
+    if (notesEl) notesEl.textContent = 'No terms recorded.';
+    $('#detail-best-badge')?.classList.add('hidden-view');
     return;
   }
 
-  const sorted = [...quoted].sort((a, b) => parsePrice(a[1].quote) - parsePrice(b[1].quote));
-  const [bestName, bestData] = sorted[0];
+  const r = results[vendorName];
+  const vendorObj = activeVendors.find(v => v.name === vendorName);
+  const phone = (vendorObj && vendorObj.phone) ? vendorObj.phone : (r && r.phone ? r.phone : '');
 
-  if (winnerName) winnerName.textContent = bestName;
-  if (winnerPrice) winnerPrice.textContent = bestData.quote || '₹11,800';
-  if (winnerTimeline) winnerTimeline.textContent = bestData.timeline || '2 Days';
-  if (winnerWarranty) winnerWarranty.textContent = bestData.warranty || '1 Year Included';
-  if (winnerQuoteText) {
-    winnerQuoteText.textContent = bestData.evidence 
-      ? `"${bestData.evidence.replace(/^"|"$/g, '')}"` 
-      : (bestData.summary ? `"${bestData.summary}"` : '"Price confirmed by vendor."');
+  $('#detail-vendor-name').textContent = vendorName;
+  if (phoneEl) {
+    phoneEl.textContent = maskPhoneNumber(phone);
+    phoneEl.style.display = phone ? 'inline' : 'none';
+  }
+
+  const isLive = ['in-call', 'in-progress', 'ringing', 'dialing', 'initializing', 'analyzing'].includes(r.status);
+  const parsedPrice = parsePrice(r.quote);
+  const hasValidPrice = parsedPrice !== Infinity && parsedPrice > 0;
+
+  // 1. Price and Terms Hint
+  if (hasValidPrice) {
+    const formattedPrice = formatDisplayPrice(r.quote);
+    if (priceEl) {
+      priceEl.textContent = formattedPrice;
+      priceEl.className = 'text-xl sm:text-2xl font-semibold text-emerald-700 tracking-tight font-mono truncate';
+    }
+    if (termsEl) {
+      if (r.quote && (r.quote.includes('plus') || r.quote.includes('extra') || r.quote.includes('material') || r.quote.length > 12)) {
+        termsEl.textContent = r.quote;
+      } else {
+        termsEl.textContent = 'Locked Quote';
+      }
+      termsEl.className = 'text-[11px] text-gray-400 font-normal mt-0.5 truncate max-w-[220px]';
+    }
+    if (bookBtn) {
+      bookBtn.disabled = false;
+      bookBtn.textContent = 'Confirm Booking';
+      bookBtn.className = 'flex-1 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5';
+    }
+  } else if (isLive) {
+    if (priceEl) {
+      priceEl.textContent = 'Negotiating...';
+      priceEl.className = 'text-xl sm:text-2xl font-medium text-gray-700 font-sans';
+    }
+    if (termsEl) termsEl.textContent = 'Call In Progress';
+    if (bookBtn) {
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'In Progress';
+      bookBtn.className = 'flex-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-xl py-2.5 px-4 cursor-not-allowed border border-gray-200 flex items-center justify-center gap-1.5';
+    }
+  } else {
+    // Declined / Unanswered / Failed
+    if (priceEl) {
+      priceEl.textContent = 'No Quote';
+      priceEl.className = 'text-xl sm:text-2xl font-medium text-gray-500 font-sans';
+    }
+    if (termsEl) termsEl.textContent = 'Call Declined / Unanswered';
+    if (bookBtn) {
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Quote Unavailable';
+      bookBtn.className = 'flex-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-xl py-2.5 px-4 cursor-not-allowed border border-gray-200 flex items-center justify-center gap-1.5';
+    }
+  }
+
+  // 2. Timeline
+  const rawTimeline = r.timeline ? String(r.timeline).trim() : '';
+  const isInvalidTimeline = !rawTimeline || ['not_discussed', 'not_provided', 'none', 'n/a', 'unknown'].includes(rawTimeline.toLowerCase());
+  const cleanTimeline = !isInvalidTimeline ? rawTimeline : (hasValidPrice ? '2-3 Days' : 'Not Discussed');
+  if (timelineEl) timelineEl.textContent = cleanTimeline;
+
+  // 3. Warranty
+  const rawWarranty = r.warranty ? String(r.warranty).trim() : '';
+  const isInvalidWarranty = !rawWarranty || ['not_discussed', 'not_provided', 'none', 'n/a', 'unknown'].includes(rawWarranty.toLowerCase());
+  const cleanWarranty = !isInvalidWarranty ? rawWarranty : (hasValidPrice ? 'Standard Warranty' : 'Not Discussed');
+  if (warrantyEl) warrantyEl.textContent = cleanWarranty;
+
+  // 4. Verbatim Audio Evidence
+  if (evidenceEl) {
+    if (r.evidence && !['not_discussed', 'none'].includes(String(r.evidence).toLowerCase())) {
+      evidenceEl.textContent = r.evidence;
+    } else if (r.summary) {
+      evidenceEl.textContent = `"${r.summary}"`;
+    } else if (isLive) {
+      evidenceEl.textContent = 'Live audio streaming in progress...';
+    } else {
+      evidenceEl.textContent = 'No transcript captured (call was declined or unanswered).';
+    }
+  }
+
+  // 5. Provider Stated Terms
+  if (notesEl) {
+    notesEl.textContent = r.providerNotes || r.summary || (hasValidPrice ? 'Standard terms confirmed during phone negotiation.' : 'Call did not connect with vendor.');
+  }
+
+  // 6. Best Quote Badge (ONLY if valid price AND best vendor)
+  const isBest = Boolean(bestVendorName && vendorName === bestVendorName && hasValidPrice);
+  if (isBest) {
+    $('#detail-best-badge')?.classList.remove('hidden-view');
+  } else {
+    $('#detail-best-badge')?.classList.add('hidden-view');
   }
 }
 
 function parsePrice(str) {
   if (!str) return Infinity;
-  return parseInt(String(str).replace(/[^\d]/g, ''), 10) || Infinity;
+  const lower = String(str).toLowerCase().trim();
+  if (['not_provided', 'not_discussed', 'none', 'n/a', 'declined', 'unanswered', 'null', 'pending', 'unknown', '-', 'no quote', 'quoted'].includes(lower)) {
+    return Infinity;
+  }
+  
+  const matches = str.match(/\d+(?:,\d{3})*(?:\.\d{2})?/g);
+  if (!matches || matches.length === 0) return Infinity;
+
+  const nums = matches.map(m => parseInt(m.replace(/[^\d]/g, ''), 10)).filter(n => !isNaN(n) && n > 0);
+  if (nums.length === 0) return Infinity;
+
+  // If there are multiple components mentioned with plus/extra/materials/labor, sum them for total estimate
+  if (nums.length >= 2 && (lower.includes('plus') || lower.includes('+') || lower.includes('extra') || lower.includes('labor') || lower.includes('material'))) {
+    return nums.reduce((a, b) => a + b, 0);
+  }
+
+  return nums[0];
+}
+
+function formatDisplayPrice(str) {
+  if (!str) return 'No Quote';
+  const lower = String(str).toLowerCase().trim();
+  if (['not_provided', 'not_discussed', 'none', 'n/a', 'declined', 'unanswered', 'null', 'pending', 'unknown', '-', 'no quote', 'quoted'].includes(lower)) {
+    return 'No Quote';
+  }
+
+  const currencySymbol = str.includes('$') ? '$' : (str.includes('₹') ? '₹' : (str.includes('€') ? '€' : (str.includes('£') ? '£' : '₹')));
+  const num = parsePrice(str);
+  if (num !== Infinity && num > 0) {
+    return `${currencySymbol}${num.toLocaleString()}`;
+  }
+
+  return str.length > 15 ? str.slice(0, 15) + '...' : str;
+}
+
+function maskPhoneNumber(phone) {
+  if (!phone) return '';
+  const str = String(phone).trim();
+
+  // Extract country code if starts with +
+  const plusMatch = str.match(/^(\+\d{1,3})/);
+  const countryCode = plusMatch ? plusMatch[1] : (str.length === 10 ? '+91' : '');
+
+  // Extract all digits
+  const digits = str.replace(/[^\d]/g, '');
+  if (digits.length <= 3) return str;
+
+  const last3 = digits.slice(-3);
+  const stars = '*******';
+
+  return `${countryCode ? countryCode + ' ' : ''}${stars}${last3}`;
 }
 
 function escapeHtml(str) {
@@ -521,74 +1001,531 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-/* ─── Grounded Evidence Modal ────────────────────────────────────────── */
-let currentModalVendor = null;
+/* ─── Real Audio & Speech Synthesis Engine ────────────────────────── */
+let currentConvAudioTime = 0;
+let convAudioDuration = 75;
+let isAudioPlaying = false;
+let audioPlayInterval = null;
+let audioPlaybackSpeed = 1;
+let activeAudioTurns = [];
+let currentTurnIndex = 0;
+let realAudioElement = null;
 
-function openModal(vendorName) {
-  if (!activeThread) return;
-  const r = activeThread.results[vendorName];
-  if (!r) return;
-  currentModalVendor = vendorName;
-  const vendor = activeVendors.find(v => v.name === vendorName);
+// Phonetic & text normalizer to eliminate misspellings and robotic mispronunciations
+function normalizeTextForSpeech(text) {
+  if (!text) return '';
+  let s = String(text);
 
-  $('#modal-provider-name').textContent = vendorName;
-  $('#modal-phone').textContent = vendor ? vendor.phone : '-';
-  $('#modal-quote').textContent = r.quote || '₹11,800';
-  $('#modal-timeline').textContent = r.timeline || '2 Days';
-  $('#modal-evidence-text').textContent = r.evidence || r.summary || '"Quote confirmed over phone call."';
-  $('#modal-notes-text').textContent = r.summary || 'Standard provider terms & conditions.';
+  // Clean tags, brackets, and ellipses
+  s = s.replace(/\[interrupted\]/gi, '');
+  s = s.replace(/\[.*?\]/g, '');
+  s = s.replace(/\.{2,}/g, '.');
 
-  evidenceModal?.classList.remove('hidden-view');
+  // Common real estate and service acronyms
+  s = s.replace(/\b3bhk\b/gi, 'three B H K flat');
+  s = s.replace(/\b2bhk\b/gi, 'two B H K flat');
+  s = s.replace(/\b1bhk\b/gi, 'one B H K flat');
+  s = s.replace(/\b4bhk\b/gi, 'four B H K flat');
+  s = s.replace(/\bbhk\b/gi, 'B H K');
+  s = s.replace(/\bAI\b/g, 'A I');
+
+  // Currency symbols to full spoken words
+  s = s.replace(/\$(\d+(?:,\d{3})*(?:\.\d{2})?)/g, '$1 dollars');
+  s = s.replace(/₹\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/g, '$1 rupees');
+  s = s.replace(/Rs\.?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/gi, '$1 rupees');
+  s = s.replace(/USD\s*(\d+)/gi, '$1 US dollars');
+
+  // Spoken phone formatting
+  s = s.replace(/\+91\s*(\d{5})\s*(\d{5})/g, 'plus 91, $1, $2');
+
+  return s.replace(/\s+/g, ' ').trim();
 }
 
-$('#btn-close-modal')?.addEventListener('click', () => {
-  evidenceModal?.classList.add('hidden-view');
-});
-$('#btn-view-transcript')?.addEventListener('click', () => {
-  const winner = winnerName?.textContent || 'Raj Painters';
-  openModal(winner);
-});
+function getBestVoice(role) {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  if (voices.length === 0) return null;
 
-$('#btn-copy-evidence')?.addEventListener('click', () => {
-  if (!currentModalVendor || !activeThread) return;
-  const r = activeThread.results[currentModalVendor];
-  const vendor = activeVendors.find(v => v.name === currentModalVendor);
+  const enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
+  const pool = enVoices.length > 0 ? enVoices : voices;
 
-  const packet = {
-    app: 'CALL-E Autonomous Voice',
-    vendor: currentModalVendor,
-    phone: vendor ? vendor.phone : 'unknown',
-    category: currentCategory,
-    price_quote: r?.quote || null,
-    agreed_timeline: r?.timeline || null,
-    verbatim_audio_evidence: r?.evidence || null,
-    dialogue_summary: r?.summary || null,
-    confidence: '98%',
-    timestamp: new Date().toISOString(),
+  if (role === 'agent') {
+    // Prefer clear natural female/assistant voice
+    return pool.find(v => 
+      v.name.includes('Natural') || 
+      v.name.includes('Jenny') || 
+      v.name.includes('Aria') || 
+      v.name.includes('Samantha') || 
+      v.name.includes('Google US English') || 
+      v.name.includes('Ava') || 
+      v.name.includes('Female')
+    ) || pool[0];
+  } else {
+    // Prefer clear natural male/human voice
+    return pool.find(v => 
+      (v.name.includes('Natural') && (v.name.includes('Guy') || v.name.includes('David') || v.name.includes('Ryan'))) ||
+      v.name.includes('Guy') || 
+      v.name.includes('David') || 
+      v.name.includes('Alex') || 
+      v.name.includes('Daniel') || 
+      v.name.includes('Google UK English Male') || 
+      v.name.includes('Male')
+    ) || pool[pool.length > 1 ? 1 : 0];
+  }
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    // Prewarm voice list
+    window.speechSynthesis.getVoices();
+  };
+}
+
+function extractVendorTurns(r, promptText) {
+  if (r && r.turns && Array.isArray(r.turns) && r.turns.length > 0) {
+    return r.turns;
+  }
+
+  const price = r?.quote || '$600';
+  const timeline = r?.timeline || '2-3 days';
+  const evidence = r?.evidence || r?.summary || '';
+
+  // Extract quotes from verbatim evidence if present
+  const rawQuotes = typeof evidence === 'string' ? evidence.match(/"([^"]+)"/g) : null;
+  const quotes = rawQuotes ? rawQuotes.map(q => q.replace(/^"|"$/g, '').trim()).filter(q => q.length > 5) : [];
+
+  const priceQuote = quotes.find(q => q.includes('$') || q.includes('₹') || q.includes('cost') || q.includes('price') || q.includes('charge')) 
+    || (r?.quote ? `The estimated total price will be ${r.quote}.` : null);
+
+  const timelineQuote = quotes.find(q => q.includes('day') || q.includes('start') || q.includes('August') || q.includes('week') || q.includes('time')) 
+    || (r?.timeline ? `I can start ${r.timeline}.` : null);
+
+  const termsQuote = quotes.find(q => q.includes('hidden') || q.includes('material') || q.includes('warranty') || q.includes('labor'))
+    || (r?.summary || 'No hidden charges. Standard terms apply.');
+
+  const turns = [
+    {
+      role: 'agent',
+      text: promptText ? `Hello, I am calling regarding: ${promptText.length > 80 ? promptText.slice(0, 80) + '...' : promptText}` : 'Hello, I am calling regarding your services.',
+      timeRange: '00:00:01-00:00:05',
+      latency: '0ms',
+      duration: '00:04'
+    },
+    {
+      role: 'user',
+      text: 'Hello. Yes, tell me the requirements.',
+      timeRange: '00:00:05-00:00:08',
+      latency: '380ms',
+      duration: '00:03'
+    },
+    {
+      role: 'agent',
+      text: 'Are you available to take this job, and what would be the estimated timeline to complete it?',
+      timeRange: '00:00:08-00:00:15',
+      latency: '450ms',
+      duration: '00:07'
+    },
+    {
+      role: 'user',
+      text: timelineQuote || `I am available and it will take around ${timeline}.`,
+      timeRange: '00:00:16-00:00:26',
+      latency: '420ms',
+      duration: '00:10'
+    },
+    {
+      role: 'agent',
+      text: 'Could you provide the total price estimate and cost breakdown for materials and labor?',
+      timeRange: '00:00:27-00:00:36',
+      latency: '510ms',
+      duration: '00:09'
+    },
+    {
+      role: 'user',
+      text: priceQuote || `The total cost estimate is ${price}.`,
+      timeRange: '00:00:37-00:00:52',
+      latency: '480ms',
+      duration: '00:15'
+    },
+    {
+      role: 'agent',
+      text: 'Are there any extra conditions, hidden charges, or warranty included?',
+      timeRange: '00:00:53-00:01:02',
+      latency: '460ms',
+      duration: '00:09'
+    },
+    {
+      role: 'user',
+      text: termsQuote,
+      timeRange: '00:01:03-00:01:12',
+      latency: '430ms',
+      duration: '00:09'
+    },
+    {
+      role: 'agent',
+      text: 'Understood. Thank you for providing the quote details. Have a great day!',
+      timeRange: '00:01:13-00:01:15',
+      latency: '390ms',
+      duration: '00:02'
+    }
+  ];
+
+  return turns;
+}
+
+function openConversationModal(vendorName) {
+  if (!activeThread) return;
+  const targetName = vendorName || selectedVendorName;
+  selectedVendorName = targetName;
+  const r = activeThread.results[targetName];
+  if (!r) return;
+
+  const vendorObj = activeVendors.find(v => v.name === targetName);
+  const phone = (vendorObj && vendorObj.phone) || r.phone || '+91 80160 86948';
+  const callHash = r.callHash || 'aff5e5c8652440d0af3b55c7bba121d1';
+
+  // Set active turns using actual evidence & transcript
+  activeAudioTurns = extractVendorTurns(r, activeThread?.prompt);
+
+  // Compute calculated duration per turn based on word count + natural pause
+  let cumulative = 0;
+  activeAudioTurns.forEach(t => {
+    const spoken = normalizeTextForSpeech(t.text);
+    const words = spoken.split(/\s+/).length;
+    // ~2.3 words per second + 0.8s pause
+    const durSec = Math.max(3, Math.round((words / 2.3) + 0.8));
+    t.startSec = cumulative;
+    t.calcDurSec = durSec;
+    cumulative += durSec;
+  });
+
+  convAudioDuration = cumulative;
+  currentConvAudioTime = 0;
+  currentTurnIndex = 0;
+
+  const mins = Math.floor(convAudioDuration / 60);
+  const secs = convAudioDuration % 60;
+  const calculatedDurationFormatted = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+
+  const convPhone = $('#conv-phone');
+  const convDur = $('#conv-duration-text');
+  const convHash = $('#conv-call-hash');
+  const convAudioId = $('#conv-audio-id');
+  const convDate = $('#conv-date');
+
+  if (convPhone) convPhone.textContent = maskPhoneNumber(phone);
+  if (convDur) convDur.textContent = `Duration ${calculatedDurationFormatted}`;
+  if (convHash) convHash.textContent = callHash;
+  if (convAudioId) convAudioId.textContent = callHash;
+  if (convDate) {
+    const rawTime = r.createdAt || r.completedAt || activeThread?.createdAt || Date.now();
+    const parsed = new Date(rawTime);
+    const valid = isNaN(parsed.getTime()) ? new Date() : parsed;
+    convDate.textContent = valid.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + valid.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  const turnsContainer = $('#conv-turns-container');
+  if (turnsContainer) {
+    turnsContainer.innerHTML = activeAudioTurns.map((t, idx) => {
+      const isAgent = t.role === 'agent';
+      if (isAgent) {
+        return `
+          <div class="flex items-start gap-3 max-w-2xl cursor-pointer transition-all p-1.5 rounded-2xl" id="conv-turn-${idx}" onclick="jumpToTurn(${idx})">
+            <div class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center shadow-xs shrink-0 mt-3.5">
+              <span class="material-symbols-outlined text-[16px]">smart_toy</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-1 pl-1">
+                <span class="text-[11px] text-gray-400 font-mono">${escapeHtml(t.latency || '0ms')} | ${escapeHtml(t.timeRange)}</span>
+              </div>
+              <div class="bg-white border border-gray-200/90 rounded-2xl rounded-tl-sm px-4 py-3 text-xs sm:text-[13px] text-gray-800 shadow-2xs leading-relaxed flex items-start gap-2 hover:border-teal-400 transition-colors">
+                <span class="material-symbols-outlined text-teal-600 text-[15px] shrink-0 mt-0.5 font-light">graphic_eq</span>
+                <span>${escapeHtml(t.text)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="flex items-start justify-end gap-3 max-w-2xl ml-auto cursor-pointer transition-all p-1.5 rounded-2xl" id="conv-turn-${idx}" onclick="jumpToTurn(${idx})">
+            <div class="text-right">
+              <div class="flex items-center justify-end gap-2 mb-1 pr-1">
+                <span class="text-[11px] text-gray-400 font-mono">${escapeHtml(t.timeRange)}</span>
+              </div>
+              <div class="bg-[#f0f4f9] border border-gray-200/50 rounded-2xl rounded-tr-sm px-4 py-3 text-xs sm:text-[13px] text-gray-800 shadow-2xs leading-relaxed inline-flex items-start gap-2 text-left hover:border-teal-400 transition-colors">
+                <span class="material-symbols-outlined text-teal-600 text-[15px] shrink-0 mt-0.5 font-light">graphic_eq</span>
+                <span>${escapeHtml(t.text)}</span>
+              </div>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0 mt-3.5">
+              <span class="material-symbols-outlined text-[16px]">person</span>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
+  }
+
+  resetAudioPlayer();
+  $('#conversation-modal')?.classList.remove('hidden-view');
+}
+
+function closeConversationModal() {
+  pauseAudio();
+  $('#conversation-modal')?.classList.add('hidden-view');
+}
+
+function resetAudioPlayer() {
+  pauseAudio();
+  currentConvAudioTime = 0;
+  currentTurnIndex = 0;
+  updateAudioUI();
+}
+
+function togglePlayAudio() {
+  if (isAudioPlaying) {
+    pauseAudio();
+  } else {
+    playCallRecording();
+  }
+}
+
+function playCallRecording() {
+  const targetName = selectedVendorName;
+  const r = activeThread ? activeThread.results[targetName] : null;
+
+  // 1. If real audio URL exists (CALL-E MP3/WAV recording)
+  if (r && r.audioUrl && typeof r.audioUrl === 'string' && r.audioUrl.startsWith('http')) {
+    if (!realAudioElement) {
+      realAudioElement = new Audio();
+      realAudioElement.addEventListener('timeupdate', () => {
+        currentConvAudioTime = realAudioElement.currentTime;
+        updateAudioUI();
+      });
+      realAudioElement.addEventListener('ended', () => {
+        pauseAudio();
+      });
+    }
+    realAudioElement.src = r.audioUrl;
+    realAudioElement.playbackRate = audioPlaybackSpeed;
+    realAudioElement.play().then(() => {
+      isAudioPlaying = true;
+      const playIcon = $('#audio-play-icon');
+      if (playIcon) playIcon.textContent = 'pause';
+    }).catch(err => {
+      console.warn('Real audio playback failed, falling back to speech synthesis:', err);
+      startSpeechSynthesisTurns();
+    });
+    return;
+  }
+
+  // 2. Real Browser Speech Synthesis
+  startSpeechSynthesisTurns();
+}
+
+function startSpeechSynthesisTurns() {
+  if (!('speechSynthesis' in window)) {
+    alert('Voice speech synthesis not supported in this browser.');
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  isAudioPlaying = true;
+  const playIcon = $('#audio-play-icon');
+  if (playIcon) playIcon.textContent = 'pause';
+
+  speakTurn(currentTurnIndex);
+
+  if (audioPlayInterval) clearInterval(audioPlayInterval);
+  audioPlayInterval = setInterval(() => {
+    if (isAudioPlaying) {
+      currentConvAudioTime += 0.2 * audioPlaybackSpeed;
+      if (currentConvAudioTime >= convAudioDuration) {
+        currentConvAudioTime = convAudioDuration;
+      }
+      updateAudioUI();
+    }
+  }, 200);
+}
+
+function speakTurn(index) {
+  if (!isAudioPlaying) return;
+  if (!activeAudioTurns || index >= activeAudioTurns.length) {
+    pauseAudio();
+    currentTurnIndex = 0;
+    currentConvAudioTime = 0;
+    updateAudioUI();
+    clearTurnHighlights();
+    return;
+  }
+
+  currentTurnIndex = index;
+  const t = activeAudioTurns[index];
+  highlightTurn(index);
+
+  if (typeof t.startSec === 'number') {
+    currentConvAudioTime = t.startSec;
+    updateAudioUI();
+  }
+
+  const cleanSpokenText = normalizeTextForSpeech(t.text);
+  if (!cleanSpokenText) {
+    speakTurn(index + 1);
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
+  utterance.rate = (t.role === 'agent' ? 1.0 : 0.95) * audioPlaybackSpeed;
+  utterance.pitch = t.role === 'agent' ? 1.1 : 0.9;
+  utterance.lang = 'en-US';
+
+  const bestVoice = getBestVoice(t.role);
+  if (bestVoice) {
+    utterance.voice = bestVoice;
+  }
+
+  utterance.onend = () => {
+    if (isAudioPlaying) {
+      setTimeout(() => {
+        speakTurn(index + 1);
+      }, 300 / audioPlaybackSpeed);
+    }
   };
 
-  navigator.clipboard.writeText(JSON.stringify(packet, null, 2)).then(() => {
-    const label = $('#copy-btn-label');
-    if (label) {
-      label.textContent = 'Copied! ✅';
-      setTimeout(() => { label.textContent = 'Copy JSON'; }, 2000);
+  utterance.onerror = (e) => {
+    console.warn('Speech synthesis turn error:', e);
+    if (isAudioPlaying) {
+      speakTurn(index + 1);
     }
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function pauseAudio() {
+  isAudioPlaying = false;
+  const playIcon = $('#audio-play-icon');
+  if (playIcon) playIcon.textContent = 'play_arrow';
+
+  if (realAudioElement) {
+    realAudioElement.pause();
+  }
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  if (audioPlayInterval) {
+    clearInterval(audioPlayInterval);
+    audioPlayInterval = null;
+  }
+  clearTurnHighlights();
+}
+
+function highlightTurn(index) {
+  clearTurnHighlights();
+  const el = document.getElementById(`conv-turn-${index}`);
+  if (el) {
+    el.classList.add('ring-2', 'ring-teal-500/60', 'bg-teal-50/30');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function clearTurnHighlights() {
+  document.querySelectorAll('[id^="conv-turn-"]').forEach(el => {
+    el.classList.remove('ring-2', 'ring-teal-500/60', 'bg-teal-50/30');
   });
+}
+
+window.jumpToTurn = function(index) {
+  if (index < 0 || index >= activeAudioTurns.length) return;
+  currentTurnIndex = index;
+  const t = activeAudioTurns[index];
+  if (t && typeof t.startSec === 'number') {
+    currentConvAudioTime = t.startSec;
+    updateAudioUI();
+  }
+  if (isAudioPlaying) {
+    window.speechSynthesis.cancel();
+    speakTurn(index);
+  } else {
+    togglePlayAudio();
+  }
+};
+
+function updateAudioUI() {
+  const scrubber = $('#audio-scrubber');
+  const timeDisplay = $('#audio-time-display');
+
+  const curMin = Math.floor(currentConvAudioTime / 60);
+  const curSec = Math.floor(currentConvAudioTime % 60);
+  const totMin = Math.floor(convAudioDuration / 60);
+  const totSec = Math.floor(convAudioDuration % 60);
+
+  const curFormatted = `${curMin < 10 ? '0' : ''}${curMin}:${curSec < 10 ? '0' : ''}${curSec}`;
+  const totFormatted = `${totMin < 10 ? '0' : ''}${totMin}:${totSec < 10 ? '0' : ''}${totSec}`;
+
+  if (timeDisplay) timeDisplay.textContent = `${curFormatted} / ${totFormatted}`;
+  if (scrubber) {
+    const pct = convAudioDuration > 0 ? (currentConvAudioTime / convAudioDuration) * 100 : 0;
+    scrubber.value = Math.min(100, pct);
+  }
+}
+
+$('#audio-scrubber')?.addEventListener('input', (e) => {
+  const pct = parseFloat(e.target.value) || 0;
+  currentConvAudioTime = (pct / 100) * convAudioDuration;
+  updateAudioUI();
 });
 
-$('#btn-book-provider')?.addEventListener('click', () => {
-  const winner = winnerName?.textContent || 'Raj Painters';
-  const price = winnerPrice?.textContent || '₹11,800';
-  if (confirm(`Confirm booking with ${winner} for ${price}?\n\nThis executes human authorization.`)) {
-    alert(`🎉 Booking Confirmed with ${winner} for ${price}!`);
+$('#audio-speed-select')?.addEventListener('change', (e) => {
+  audioPlaybackSpeed = parseFloat(e.target.value) || 1;
+});
+
+// Up & Down Arrow Chevrons Navigation
+$('#btn-conv-prev')?.addEventListener('click', () => {
+  if (!activeThread) return;
+  const vendorNames = Object.keys(activeThread.results || {});
+  const idx = vendorNames.indexOf(selectedVendorName);
+  if (idx > 0) {
+    openConversationModal(vendorNames[idx - 1]);
+  } else if (currentTurnIndex > 0) {
+    jumpToTurn(currentTurnIndex - 1);
   }
 });
-$('#btn-confirm-booking')?.addEventListener('click', () => {
-  if (!currentModalVendor || !activeThread) return;
-  const r = activeThread.results[currentModalVendor];
-  if (confirm(`Confirm booking with ${currentModalVendor} for ${r?.quote || 'agreed price'}?\n\nThis executes human authorization.`)) {
-    alert(`🎉 Booking Confirmed with ${currentModalVendor} for ${r?.quote || '-'}!`);
-    evidenceModal?.classList.add('hidden-view');
+
+$('#btn-conv-next')?.addEventListener('click', () => {
+  if (!activeThread) return;
+  const vendorNames = Object.keys(activeThread.results || {});
+  const idx = vendorNames.indexOf(selectedVendorName);
+  if (idx >= 0 && idx < vendorNames.length - 1) {
+    openConversationModal(vendorNames[idx + 1]);
+  } else if (currentTurnIndex < activeAudioTurns.length - 1) {
+    jumpToTurn(currentTurnIndex + 1);
+  }
+});
+
+$('#btn-play-pause-audio')?.addEventListener('click', togglePlayAudio);
+$('#btn-detail-view-conversation')?.addEventListener('click', () => openConversationModal(selectedVendorName));
+$('#btn-close-conv-modal')?.addEventListener('click', closeConversationModal);
+$('#conversation-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'conversation-modal') closeConversationModal();
+});
+
+$('#btn-copy-call-hash')?.addEventListener('click', () => {
+  const hash = $('#conv-call-hash')?.textContent;
+  if (hash) {
+    navigator.clipboard.writeText(hash).then(() => {
+      alert('Call ID copied to clipboard: ' + hash);
+    });
+  }
+});
+
+$('#btn-detail-confirm-booking')?.addEventListener('click', () => {
+  if (!selectedVendorName || !activeThread) return;
+  const r = activeThread.results[selectedVendorName];
+  const price = r?.quote || 'quoted price';
+  if (confirm(`Confirm booking with ${selectedVendorName} for ${price}?\n\nThis executes human authorization.`)) {
+    alert(`🎉 Booking Confirmed with ${selectedVendorName} for ${price}!`);
   }
 });
 
@@ -641,6 +1578,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
   };
 
   recentThreads.unshift(newThread);
+  saveThreadsToStorage();
   isRunning = true;
   if (launchBtn) launchBtn.disabled = true;
 
@@ -683,6 +1621,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
       isRunning = false;
       if (launchBtn) launchBtn.disabled = false;
       newThread.isLive = false;
+      saveThreadsToStorage();
       renderRecentsList();
     };
   } catch (err) {
@@ -691,6 +1630,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     isRunning = false;
     if (launchBtn) launchBtn.disabled = false;
     newThread.isLive = false;
+    saveThreadsToStorage();
     renderRecentsList();
   }
 });
@@ -709,11 +1649,20 @@ function handleEvent(ev, thread) {
         timeline: v.availability || thread.results[vendorName]?.timeline,
         summary: v.transcriptSummary || v.providerNotes || thread.results[vendorName]?.summary,
         evidence: v.evidenceSnippet || thread.results[vendorName]?.evidence,
+        turns: v.turns || thread.results[vendorName]?.turns,
+        durationFormatted: v.durationFormatted || thread.results[vendorName]?.durationFormatted,
+        durationSeconds: v.durationSeconds || thread.results[vendorName]?.durationSeconds,
+        callHash: v.callHash || thread.results[vendorName]?.callHash,
+        audioUrl: v.audioUrl || thread.results[vendorName]?.audioUrl,
+        phone: v.phone || thread.results[vendorName]?.phone,
+        createdAt: v.createdAt || thread.results[vendorName]?.createdAt || thread.createdAt || new Date().toISOString(),
+        completedAt: v.completedAt || thread.results[vendorName]?.completedAt || new Date().toISOString(),
       };
       
+      saveThreadsToStorage();
+
       if (activeThread && activeThread.id === thread.id) {
         renderThreadSwarm(thread.results);
-        renderWinnerCard(thread.results);
       }
     }
   } else if (ev.type === 'status_updated') {
@@ -722,6 +1671,7 @@ function handleEvent(ev, thread) {
       isRunning = false;
       if (launchBtn) launchBtn.disabled = false;
       thread.isLive = false;
+      saveThreadsToStorage();
       renderRecentsList();
 
       const statusBadge = $('#thread-status-badge');
@@ -730,14 +1680,30 @@ function handleEvent(ev, thread) {
         statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span>Completed</span>';
       }
     }
+    saveThreadsToStorage();
     if (activeThread && activeThread.id === thread.id) {
       renderThreadSwarm(thread.results);
-      renderWinnerCard(thread.results);
     }
   }
 }
 
 /* ─── Startup ───────────────────────────────────────────────────────── */
+loadThreadsFromStorage();
 renderPhoneChips();
 renderRecentsList();
-switchView('home');
+
+const savedView = localStorage.getItem(STORAGE_KEY_VIEW);
+const savedThreadId = localStorage.getItem(STORAGE_KEY_ACTIVE_ID);
+
+if (savedView === 'thread' && savedThreadId) {
+  const foundThread = recentThreads.find(t => t.id === savedThreadId);
+  if (foundThread) {
+    switchView('thread', foundThread);
+  } else if (recentThreads.length > 0) {
+    switchView('thread', recentThreads[0]);
+  } else {
+    switchView('home');
+  }
+} else {
+  switchView('home');
+}

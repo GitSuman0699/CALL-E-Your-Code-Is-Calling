@@ -10,12 +10,26 @@ export type ServiceCategory =
 
 
 
+export interface ConversationTurn {
+  role: 'agent' | 'user';
+  text: string;
+  timeRange: string;
+  latency?: string;
+  duration?: string;
+  interrupted?: boolean;
+}
+
 export interface TargetVendor {
   id: string;
   name: string;
   phone: string;
   status: 'pending' | 'initializing' | 'dialing' | 'ringing' | 'in-call' | 'analyzing' | 'quoted' | 'no-answer' | 'refused' | 'failed' | 'voicemail' | 'error';
   callId?: string;
+  callHash?: string;
+  audioUrl?: string;
+  durationSeconds?: number;
+  durationFormatted?: string;
+  turns?: ConversationTurn[];
   priceEstimate?: string;
   priceNumeric?: number;
   availability?: string;
@@ -25,7 +39,8 @@ export interface TargetVendor {
   transcriptSummary?: string;
   confidence?: 'high' | 'medium' | 'low';
   confidenceScore?: number;
-  durationSeconds?: number;
+  createdAt?: string;
+  completedAt?: string;
   updatedAt?: string;
 }
 
