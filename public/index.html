@@ -318,13 +318,7 @@
             estimated total price, and how many days it will require
           </h2>
         </div>
-        <div class="flex items-center gap-2.5 shrink-0">
-          <button type="button" id="btn-stop-swarm"
-            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium transition-colors cursor-pointer"
-            title="Stop Active Call Swarm">
-            <span class="material-symbols-outlined text-[15px]">stop_circle</span>
-            <span>Stop Call</span>
-          </button>
+        <div class="flex items-center gap-2 shrink-0">
           <span id="thread-status-badge"
             class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-medium">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
@@ -502,6 +496,47 @@
             Number</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ─── Pre-Call Verification Modal ─────────────────────────────────── -->
+  <div id="verify-call-modal" class="modal-overlay hidden-view">
+    <div class="modal-card max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-2xl p-6 space-y-4 font-sans">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 shrink-0">
+          <span class="material-symbols-outlined text-[22px]">phone_forwarded</span>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-gray-900">Check Call Details</h3>
+          <p class="text-xs text-gray-500 mt-0.5">Please review your prompt &amp; vendor numbers before placing the call.</p>
+        </div>
+      </div>
+
+      <div class="space-y-2.5 bg-gray-50/80 rounded-xl p-3.5 border border-gray-200/70 text-xs text-gray-700 font-sans">
+        <div>
+          <span class="text-[11px] font-medium text-gray-400 uppercase tracking-wider block mb-1">Target Phone(s)</span>
+          <div id="verify-call-phones-preview" class="font-medium text-gray-800 flex flex-wrap gap-1.5">
+          </div>
+        </div>
+        
+        <div class="pt-2 border-t border-gray-200/60">
+          <span class="text-[11px] font-medium text-gray-400 uppercase tracking-wider block mb-1">AI Prompt / Requirements</span>
+          <p id="verify-call-prompt-preview" class="text-xs text-gray-800 leading-relaxed break-words max-h-28 overflow-y-auto pr-1">
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-2">
+        <button type="button" id="btn-cancel-verify-call"
+          class="px-4 py-2.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
+          Edit Details
+        </button>
+        <button type="button" id="btn-confirm-verify-call"
+          class="px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-medium rounded-xl transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[15px]">call</span>
+          <span>Yes, Make Call</span>
+        </button>
+      </div>
     </div>
   </div>
 

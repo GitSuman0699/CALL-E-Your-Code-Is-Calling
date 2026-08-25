@@ -4,41 +4,9 @@
 
 /* ─── Service & Negotiation Presets ──────────────────────────────────── */
 const PRESETS = {
-  personal: {
-    name: 'Personal Message',
-    desc: 'Call with a personal message regarding the project update and ask for confirmation.',
-    vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-    ],
-  },
-  business: {
-    name: 'Ask a Business',
-    desc: 'Call and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
-    vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Raj Painters', phone: '+919876543210' },
-      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
-    ],
-  },
-  booking: {
-    name: 'Book or Reschedule',
-    desc: 'Call service provider to schedule an on-site visit for this Friday morning or reschedule to the earliest available slot.',
-    vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
-    ],
-  },
-  followup: {
-    name: 'Follow Up',
-    desc: 'Call vendor to follow up on the previous quote, negotiate for the best discount with materials included, and ask for timeline confirmation.',
-    vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Raj Painters', phone: '+919876543210' },
-    ],
-  },
   painting: {
     name: 'Painting RFQ',
-    desc: 'Call and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the estimated total price, and how many days it will require',
+    desc: 'Call and inquire if they are available to paint a 3BHK apartment (~1,400 sq ft) including walls, ceilings, and primer coat starting this Friday. Ask for an estimated total price with materials vs labor breakdown, estimated completion timeline, and whether a warranty on paint finish is included.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Raj Painters', phone: '+919876543210' },
@@ -47,7 +15,7 @@ const PRESETS = {
   },
   plumbing: {
     name: 'Plumbing Repair',
-    desc: 'Call plumbers and ask if they can fix kitchen sink pipe leak and clear bathroom drain today. Ask for visit charges and estimated quote.',
+    desc: 'Call to check immediate availability for an emergency plumbing repair today. We need to fix a leaking kitchen sink drain pipe and clear a blocked bathroom drain line. Ask for their standard inspection visit charge, total repair cost estimate, and earliest arrival time.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Sharma Plumbing', phone: '+919900110011' },
@@ -56,7 +24,7 @@ const PRESETS = {
   },
   electrical: {
     name: 'Electrical Work',
-    desc: 'Call electricians for 2BHK flat rewiring and MCB distribution box replacement. Ask for availability this weekend and cost estimate.',
+    desc: 'Call to check availability for electrical work this Saturday: complete safety inspection and replacement of a 63A MCB distribution board, plus wiring 4 new AC heavy-load power points. Ask for per-point labor rates, total estimated cost, and safety guarantee.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Bright Spark Electricals', phone: '+918811122233' },
@@ -65,11 +33,43 @@ const PRESETS = {
   },
   carpentry: {
     name: 'Custom Carpentry',
-    desc: 'Call carpenters for custom modular wardrobe (7x6 ft) with hydraulic hinges. Ask for labor estimate and completion timeline.',
+    desc: 'Call to request a quote for building a custom floor-to-ceiling bedroom wardrobe (7x6 ft) with soft-close hydraulic hinges and matte laminate finish. Ask for per-square-foot material and labor rates, earliest start date, and estimated completion timeline.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'WoodCraft Studio', phone: '+919811223344' },
       { name: 'TimberTech Interiors', phone: '+918722334455' },
+    ],
+  },
+  personal: {
+    name: 'Personal Message',
+    desc: 'Call and convey a friendly reminder regarding our scheduled project kickoff call tomorrow at 10:30 AM. Ask them to confirm if that time works or if they prefer rescheduling to the afternoon.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+    ],
+  },
+  business: {
+    name: 'Ask a Business',
+    desc: 'Call the vendor to inquire about bulk corporate pricing for 25 ergonomic office chairs and 10 motorized standing desks. Ask for their wholesale discount catalog, delivery lead time, and GST invoice terms.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Raj Painters', phone: '+919876543210' },
+      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+    ],
+  },
+  booking: {
+    name: 'Book or Reschedule',
+    desc: 'Call the service manager to schedule an on-site property inspection for this Friday between 10:00 AM and 1:00 PM. If that slot is fully booked, ask for their earliest available weekend appointment.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+    ],
+  },
+  followup: {
+    name: 'Follow Up',
+    desc: 'Call the contractor to follow up on yesterday\'s estimate. Mention we have competing vendor bids around 10% lower, and ask if they can match that price with premium materials and warranty included.',
+    vendors: [
+      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Raj Painters', phone: '+919876543210' },
     ],
   }
 };
@@ -179,7 +179,6 @@ function switchView(viewName, threadData = null) {
     }
 
     const statusBadge = $('#thread-status-badge');
-    const stopBtn = $('#btn-stop-swarm');
 
     if (statusBadge) {
       if (threadData.isLive) {
@@ -192,10 +191,8 @@ function switchView(viewName, threadData = null) {
     }
 
     if (threadData.isLive) {
-      if (stopBtn) stopBtn.classList.remove('hidden-view');
       startWorkingTimer(threadData.createdAt);
     } else {
-      if (stopBtn) stopBtn.classList.add('hidden-view');
       stopWorkingTimer();
       const botContainer = $('#thread-bot-status-container');
       if (botContainer) botContainer.classList.add('hidden-view');
@@ -1804,6 +1801,11 @@ jobDesc?.addEventListener('input', () => {
   }
 });
 
+window.cancelPendingDispatch = function(e) {
+  if (e) e.stopPropagation();
+  executeStopSwarm();
+};
+
 function executeStopSwarm() {
   if (isDispatchPending) {
     if (dispatchCountdownInterval) {
@@ -1847,8 +1849,6 @@ function executeStopSwarm() {
     statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><span>Canceled</span>';
   }
 
-  $('#btn-stop-swarm')?.classList.add('hidden-view');
-
   const botContainer = $('#thread-bot-status-container');
   if (botContainer) botContainer.classList.add('hidden-view');
 
@@ -1858,60 +1858,56 @@ function executeStopSwarm() {
   showToast('Call swarm stopped', 'info');
 }
 
-// Stop / Cancel Active Call Swarm
-$('#btn-stop-swarm')?.addEventListener('click', () => {
-  if (!activeThread) return;
+/* ─── Pre-Call Verification Modal Logic ────────────────────────────── */
+let onPreCallConfirmCallback = null;
 
-  showCustomConfirm({
-    title: 'Stop Call Swarm?',
-    subtitle: 'This will terminate all in-progress outbound calls.',
-    confirmText: 'Stop Call',
-    confirmBgClass: 'bg-rose-600 hover:bg-rose-700',
-    icon: 'stop_circle',
-    iconColorClass: 'text-rose-600',
-    iconBgClass: 'bg-rose-50 border-rose-100',
-    onConfirm: () => {
-      executeStopSwarm();
-    }
-  });
+function openVerifyCallModal(promptText, onConfirm) {
+  const modal = $('#verify-call-modal');
+  if (!modal) return;
+
+  onPreCallConfirmCallback = onConfirm;
+
+  const phonesContainer = $('#verify-call-phones-preview');
+  const promptPreview = $('#verify-call-prompt-preview');
+
+  if (phonesContainer) {
+    phonesContainer.innerHTML = activeVendors.map(v => `
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-xs font-mono font-medium text-gray-800 shadow-2xs">
+        <span class="material-symbols-outlined text-[13px] text-teal-600">call</span>
+        <span>${escapeHtml(v.phone || v.name)}</span>
+      </span>
+    `).join('');
+  }
+
+  if (promptPreview) {
+    promptPreview.textContent = promptText;
+  }
+
+  modal.classList.remove('hidden-view');
+}
+
+function closeVerifyCallModal() {
+  onPreCallConfirmCallback = null;
+  $('#verify-call-modal')?.classList.add('hidden-view');
+}
+
+$('#btn-cancel-verify-call')?.addEventListener('click', closeVerifyCallModal);
+$('#verify-call-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'verify-call-modal') closeVerifyCallModal();
 });
 
-/* ─── Campaign Launch Handler (Make Call Button) ──────────────────────── */
-$('#hunt-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (isRunning) return;
-
-  const promptText = (jobDesc?.value.trim()) || '';
-
-  // Option A: Require prompt description if empty
-  if (!promptText) {
-    if (jobDesc) {
-      jobDesc.classList.add('border-rose-500', 'bg-rose-50/20');
-      jobDesc.focus();
-    }
-    showToast('Please describe what you want QuoteHunter to ask before calling.', 'info');
-    return;
+$('#btn-confirm-verify-call')?.addEventListener('click', () => {
+  if (typeof onPreCallConfirmCallback === 'function') {
+    const fn = onPreCallConfirmCallback;
+    closeVerifyCallModal();
+    fn();
+  } else {
+    closeVerifyCallModal();
   }
+});
 
-  // If no vendors added yet, try auto-extracting from prompt text (e.g. +918016086948)
-  if (activeVendors.length === 0) {
-    const phoneMatches = promptText.match(/\+?\d{10,15}/g);
-    if (phoneMatches && phoneMatches.length > 0) {
-      phoneMatches.forEach(p => {
-        const formatted = p.startsWith('+') ? p : '+' + p;
-        if (!activeVendors.some(v => v.phone === formatted)) {
-          activeVendors.push({ name: maskPhoneNumber(formatted), phone: formatted });
-        }
-      });
-      renderPhoneChips();
-    }
-  }
-
-  if (activeVendors.length === 0) {
-    openAddVendorModal();
-    return;
-  }
-
+/* ─── Campaign Launch Execution ─────────────────────────────────────── */
+async function executeLaunchCampaign(promptText) {
   const initResults = {};
   activeVendors.forEach(v => {
     initResults[v.name] = { 
@@ -1941,16 +1937,42 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
   // Switch to Recent Thread view immediately
   switchView('thread', newThread);
 
-  // ── 3-Second Safety Countdown Buffer before Cellular Carrier Dial ──
+  // ── Option 1: 3-Second Circular Countdown Ring before Cellular Carrier Dial ──
   let countdownSec = 3;
   isDispatchPending = true;
 
   const updateCountdownPill = () => {
     const workingPill = $('#thread-working-pill');
     if (workingPill) {
+      const strokeOffset = Math.round(((3 - countdownSec) / 3) * 100);
       workingPill.innerHTML = `
-        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
-        <span class="text-xs text-amber-800 font-medium font-sans">Dialing carrier in ${countdownSec}s... (Click "Stop Call" to abort)</span>
+        <div class="relative w-5 h-5 flex items-center justify-center shrink-0">
+          <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 36 36">
+            <path
+              class="text-gray-200"
+              stroke-width="4"
+              stroke="currentColor"
+              fill="none"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+            <path
+              class="text-amber-500 transition-all duration-1000 ease-linear"
+              stroke-dasharray="100, 100"
+              stroke-dashoffset="${strokeOffset}"
+              stroke-linecap="round"
+              stroke-width="4"
+              stroke="currentColor"
+              fill="none"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <span class="absolute text-[10px] font-bold text-gray-800 font-mono">${countdownSec}</span>
+        </div>
+        <span class="text-xs text-gray-700 font-medium font-sans">Connecting in ${countdownSec}s...</span>
+        <button type="button" onclick="cancelPendingDispatch(event)" class="ml-1 px-2 py-0.5 rounded-full bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 border border-gray-200 text-[11px] font-medium transition-colors cursor-pointer inline-flex items-center gap-0.5">
+          <span class="material-symbols-outlined text-[13px]">close</span>
+          <span>Cancel</span>
+        </button>
       `;
     }
   };
@@ -2036,6 +2058,48 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     saveThreadsToStorage();
     renderRecentsList();
   }
+}
+
+/* ─── Campaign Launch Handler (Make Call Button) ──────────────────────── */
+$('#hunt-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (isRunning) return;
+
+  const promptText = (jobDesc?.value.trim()) || '';
+
+  // Option A: Require prompt description if empty
+  if (!promptText) {
+    if (jobDesc) {
+      jobDesc.classList.add('border-rose-500', 'bg-rose-50/20');
+      jobDesc.focus();
+    }
+    showToast('Please describe what you want QuoteHunter to ask before calling.', 'info');
+    return;
+  }
+
+  // If no vendors added yet, try auto-extracting from prompt text (e.g. +918016086948)
+  if (activeVendors.length === 0) {
+    const phoneMatches = promptText.match(/\+?\d{10,15}/g);
+    if (phoneMatches && phoneMatches.length > 0) {
+      phoneMatches.forEach(p => {
+        const formatted = p.startsWith('+') ? p : '+' + p;
+        if (!activeVendors.some(v => v.phone === formatted)) {
+          activeVendors.push({ name: maskPhoneNumber(formatted), phone: formatted });
+        }
+      });
+      renderPhoneChips();
+    }
+  }
+
+  if (activeVendors.length === 0) {
+    openAddVendorModal();
+    return;
+  }
+
+  // All validations passed -> Open Pre-Call Verification Modal
+  openVerifyCallModal(promptText, () => {
+    executeLaunchCampaign(promptText);
+  });
 });
 
 /* ─── SSE Event Handler ─────────────────────────────────────────────── */
