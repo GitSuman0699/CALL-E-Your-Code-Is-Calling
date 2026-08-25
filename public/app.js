@@ -6,7 +6,7 @@
 const PRESETS = {
   painting: {
     name: 'Painting RFQ',
-    desc: 'Call and inquire if they are available to paint a 3BHK apartment (~1,400 sq ft) including walls, ceilings, and primer coat starting this Friday. Ask for an estimated total price with materials vs labor breakdown, estimated completion timeline, and whether a warranty on paint finish is included.',
+    desc: 'Call and inquire if they are available to paint a 3BHK apartment (~1,400 sq ft) including walls, ceilings, and primer coat at the earliest. Ask for an estimated total price with materials vs labor breakdown, estimated completion timeline, and whether a warranty on paint finish is included.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Raj Painters', phone: '+919876543210' },
@@ -15,7 +15,7 @@ const PRESETS = {
   },
   plumbing: {
     name: 'Plumbing Repair',
-    desc: 'Call to check immediate availability for an emergency plumbing repair today. We need to fix a leaking kitchen sink drain pipe and clear a blocked bathroom drain line. Ask for their standard inspection visit charge, total repair cost estimate, and earliest arrival time.',
+    desc: 'Call to check immediate availability for an urgent plumbing repair. We need to fix a leaking kitchen sink drain pipe and clear a blocked bathroom drain line. Ask for their standard inspection visit charge, total repair cost estimate, and earliest arrival time.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Sharma Plumbing', phone: '+919900110011' },
@@ -24,7 +24,7 @@ const PRESETS = {
   },
   electrical: {
     name: 'Electrical Work',
-    desc: 'Call to check availability for electrical work this Saturday: complete safety inspection and replacement of a 63A MCB distribution board, plus wiring 4 new AC heavy-load power points. Ask for per-point labor rates, total estimated cost, and safety guarantee.',
+    desc: 'Call to check earliest availability for electrical work: complete safety inspection and replacement of a 63A MCB distribution board, plus wiring 4 new AC heavy-load power points. Ask for per-point labor rates, total estimated cost, and safety guarantee.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Bright Spark Electricals', phone: '+918811122233' },
@@ -42,7 +42,7 @@ const PRESETS = {
   },
   personal: {
     name: 'Personal Message',
-    desc: 'Call and convey a friendly reminder regarding our scheduled project kickoff call tomorrow at 10:30 AM. Ask them to confirm if that time works or if they prefer rescheduling to the afternoon.',
+    desc: 'Call and convey a friendly reminder regarding our upcoming project kickoff meeting. Ask them to confirm if their schedule is on track or if they prefer adjusting the meeting time.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
     ],
@@ -58,7 +58,7 @@ const PRESETS = {
   },
   booking: {
     name: 'Book or Reschedule',
-    desc: 'Call the service manager to schedule an on-site property inspection for this Friday between 10:00 AM and 1:00 PM. If that slot is fully booked, ask for their earliest available weekend appointment.',
+    desc: 'Call the service manager to schedule an on-site property inspection for the earliest available morning slot. If that slot is fully booked, ask for their next available appointment options.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Urban Colors Ltd.', phone: '+918765432109' },
@@ -66,7 +66,7 @@ const PRESETS = {
   },
   followup: {
     name: 'Follow Up',
-    desc: 'Call the contractor to follow up on yesterday\'s estimate. Mention we have competing vendor bids around 10% lower, and ask if they can match that price with premium materials and warranty included.',
+    desc: 'Call the contractor to follow up on the recent quote estimate. Mention we have competing vendor bids around 10% lower, and ask if they can match that price with premium materials and warranty included.',
     vendors: [
       { name: 'My Mobile', phone: '+918016086948' },
       { name: 'Raj Painters', phone: '+919876543210' },
@@ -954,7 +954,7 @@ function renderVendorDetail(vendorName, results, bestVendorName) {
     }
     if (bookBtn) {
       bookBtn.disabled = false;
-      bookBtn.textContent = 'Confirm Booking';
+      bookBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">contact_phone</span><span>Contact &amp; Book</span>';
       bookBtn.className = 'flex-1 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5';
     }
   } else if (isLive) {
@@ -965,7 +965,7 @@ function renderVendorDetail(vendorName, results, bestVendorName) {
     if (termsEl) termsEl.textContent = 'Call In Progress';
     if (bookBtn) {
       bookBtn.disabled = true;
-      bookBtn.textContent = 'In Progress';
+      bookBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">hourglass_empty</span><span>In Progress</span>';
       bookBtn.className = 'flex-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-xl py-2.5 px-4 cursor-not-allowed border border-gray-200 flex items-center justify-center gap-1.5';
     }
   } else {
@@ -977,7 +977,7 @@ function renderVendorDetail(vendorName, results, bestVendorName) {
     if (termsEl) termsEl.textContent = 'Call Declined / Unanswered';
     if (bookBtn) {
       bookBtn.disabled = true;
-      bookBtn.textContent = 'Quote Unavailable';
+      bookBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">block</span><span>Quote Unavailable</span>';
       bookBtn.className = 'flex-1 bg-gray-100 text-gray-400 text-xs font-medium rounded-xl py-2.5 px-4 cursor-not-allowed border border-gray-200 flex items-center justify-center gap-1.5';
     }
   }
@@ -1771,24 +1771,109 @@ $('#btn-copy-call-hash')?.addEventListener('click', () => {
   }
 });
 
+/* ─── Booking & Contact Dossier Modal Logic ────────────────────────── */
+let currentDossierData = null;
+
+function openBookingDossierModal(vendorName) {
+  if (!activeThread) return;
+  const targetName = vendorName || selectedVendorName;
+  if (!targetName) return;
+
+  const r = activeThread.results[targetName];
+  if (!r) return;
+
+  const vendorObj = activeVendors.find(v => v.name === targetName);
+  const unmaskedPhone = (vendorObj && vendorObj.phone) || r.phone || '+91 80160 86948';
+  const cleanDigits = unmaskedPhone.replace(/[^\d]/g, '');
+
+  const price = formatDisplayPrice(r.quote || 'As discussed');
+  const timeline = r.timeline || '2-3 Days';
+  const terms = r.providerNotes || r.summary || 'Standard terms confirmed during phone negotiation.';
+  const evidence = r.evidence || r.summary || 'Verbatim quote confirmed during AI call.';
+
+  currentDossierData = {
+    vendorName: targetName,
+    phone: unmaskedPhone,
+    price,
+    timeline,
+    terms,
+    evidence,
+    prompt: activeThread.prompt || ''
+  };
+
+  const nameEl = $('#dossier-vendor-name');
+  const phoneEl = $('#dossier-unmasked-phone');
+  const priceEl = $('#dossier-price');
+  const timelineEl = $('#dossier-timeline');
+  const termsEl = $('#dossier-terms');
+  const evidenceEl = $('#dossier-evidence');
+  const callLink = $('#dossier-call-link');
+  const waLink = $('#dossier-whatsapp-link');
+
+  if (nameEl) nameEl.textContent = targetName;
+  if (phoneEl) phoneEl.textContent = unmaskedPhone;
+  if (priceEl) priceEl.textContent = price;
+  if (timelineEl) timelineEl.textContent = timeline;
+  if (termsEl) termsEl.textContent = terms;
+  if (evidenceEl) evidenceEl.textContent = `"${evidence}"`;
+
+  if (callLink) {
+    callLink.href = `tel:${unmaskedPhone}`;
+  }
+
+  if (waLink) {
+    const waMsg = `Hello ${targetName},\n\n` +
+      `I am following up on the QuoteHunter AI negotiation for: "${activeThread.prompt ? (activeThread.prompt.length > 80 ? activeThread.prompt.slice(0, 80) + '...' : activeThread.prompt) : 'services'}".\n\n` +
+      `• Agreed Quote: ${price}\n` +
+      `• Estimated Timeline: ${timeline}\n` +
+      `• Terms: ${terms}\n\n` +
+      `I would like to proceed with this booking. Please share the next steps and payment/address details.`;
+    waLink.href = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(waMsg)}`;
+  }
+
+  $('#booking-dossier-modal')?.classList.remove('hidden-view');
+}
+
+function closeBookingDossierModal() {
+  currentDossierData = null;
+  $('#booking-dossier-modal')?.classList.add('hidden-view');
+}
+
+$('#btn-close-dossier')?.addEventListener('click', closeBookingDossierModal);
+$('#btn-dossier-done')?.addEventListener('click', closeBookingDossierModal);
+$('#booking-dossier-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'booking-dossier-modal') closeBookingDossierModal();
+});
+
+$('#btn-dossier-copy-phone')?.addEventListener('click', () => {
+  if (currentDossierData?.phone) {
+    navigator.clipboard.writeText(currentDossierData.phone).then(() => {
+      showToast('Phone number copied to clipboard', 'success');
+    });
+  }
+});
+
+$('#btn-dossier-copy-all')?.addEventListener('click', () => {
+  if (!currentDossierData) return;
+  const sheet = `═══════════════════════════════════════\n` +
+    `  QUOTEHUNTER — NEGOTIATION DEAL SHEET\n` +
+    `═══════════════════════════════════════\n` +
+    `Vendor: ${currentDossierData.vendorName}\n` +
+    `Phone: ${currentDossierData.phone}\n` +
+    `Agreed Price: ${currentDossierData.price}\n` +
+    `Timeline: ${currentDossierData.timeline}\n` +
+    `Agreed Terms: ${currentDossierData.terms}\n` +
+    `Verbatim Quote: "${currentDossierData.evidence}"\n` +
+    `Requirement: ${currentDossierData.prompt}\n` +
+    `═══════════════════════════════════════`;
+  navigator.clipboard.writeText(sheet).then(() => {
+    showToast('Full Deal Sheet copied to clipboard', 'success');
+  });
+});
+
 $('#btn-detail-confirm-booking')?.addEventListener('click', () => {
   if (!selectedVendorName || !activeThread) return;
-  const r = activeThread.results[selectedVendorName];
-  const price = r?.quote || 'quoted price';
-
-  showCustomConfirm({
-    title: 'Confirm Booking',
-    subtitle: `Execute human authorization for ${selectedVendorName}`,
-    bodyText: `Agreed Quote: ${price}`,
-    confirmText: 'Authorize & Book',
-    confirmBgClass: 'bg-emerald-600 hover:bg-emerald-700',
-    icon: 'check_circle',
-    iconColorClass: 'text-emerald-600',
-    iconBgClass: 'bg-emerald-50 border-emerald-100',
-    onConfirm: () => {
-      showToast(`🎉 Booking Confirmed with ${selectedVendorName} for ${price}!`, 'success');
-    }
-  });
+  openBookingDossierModal(selectedVendorName);
 });
 
 let dispatchCountdownInterval = null;

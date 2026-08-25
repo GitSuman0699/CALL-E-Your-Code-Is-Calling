@@ -314,8 +314,7 @@
         <div class="flex items-center gap-2.5 min-w-0 flex-1 pr-4">
           <span class="material-symbols-outlined text-gray-400 text-[18px] font-light shrink-0">forum</span>
           <h2 class="text-xs sm:text-[13px] font-medium text-gray-800 truncate" id="top-bar-title">
-            Call and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the
-            estimated total price, and how many days it will require
+            Call and inquire if they are available to paint a 3BHK apartment at the earliest. Ask the estimated total price and completion timeline
           </h2>
         </div>
         <div class="flex items-center gap-2 shrink-0">
@@ -335,8 +334,7 @@
           <div
             class="bg-[#f0f4f9] text-gray-900 rounded-2xl px-5 py-3.5 max-w-2xl border border-gray-200/50 shadow-2xs">
             <p class="text-xs sm:text-[13px] leading-relaxed font-normal" id="thread-user-prompt">
-              Call and ask, are they available for painting 3BHK room on Friday including ceiling. Ask the
-              estimated total price, and how many days it will require
+              Call and inquire if they are available to paint a 3BHK apartment at the earliest. Ask the estimated total price and completion timeline
             </p>
           </div>
         </div>
@@ -445,8 +443,8 @@
                 </button>
                 <button type="button" id="btn-detail-confirm-booking"
                   class="flex-1 bg-[#5f6368] hover:bg-[#474a4d] text-white text-xs font-medium rounded-xl py-2.5 px-4 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5">
-                  <span class="material-symbols-outlined text-[15px]">check_circle</span>
-                  <span>Confirm Booking</span>
+                  <span class="material-symbols-outlined text-[15px]">contact_phone</span>
+                  <span>Contact &amp; Book</span>
                 </button>
               </div>
 
@@ -458,6 +456,112 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- ─── Booking & Contact Dossier Modal (Human Hand-Off) ─────────────── -->
+  <div id="booking-dossier-modal" class="modal-overlay hidden-view">
+    <div class="modal-card max-w-lg w-full bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden font-sans flex flex-col max-h-[92vh]">
+      
+      <!-- Top Header -->
+      <div class="px-6 py-4 border-b border-gray-100 bg-[#fafbfc] flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+            <span class="material-symbols-outlined text-[20px]">verified</span>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-semibold text-gray-900" id="dossier-vendor-name">Urban Colors Ltd.</h3>
+            <p class="text-xs text-gray-500">Negotiated Deal Hand-off Dossier</p>
+          </div>
+        </div>
+        <button type="button" id="btn-close-dossier"
+          class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors cursor-pointer"
+          title="Close">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Body Content -->
+      <div class="p-6 space-y-4 overflow-y-auto">
+        
+        <!-- Direct Phone & Quick Action Card -->
+        <div class="bg-gray-900 text-white rounded-2xl p-4.5 space-y-3.5 shadow-md">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400">Direct Phone Number</span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              Verified Contact
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-white" id="dossier-unmasked-phone">
+              +91 80160 86948
+            </span>
+            <button type="button" id="btn-dossier-copy-phone"
+              class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 text-xs font-medium transition-colors cursor-pointer inline-flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[14px]">content_copy</span>
+              <span>Copy</span>
+            </button>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="grid grid-cols-2 gap-2.5 pt-1">
+            <a id="dossier-call-link" href="#"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 rounded-xl text-xs font-medium transition-colors shadow-xs flex items-center justify-center gap-1.5 text-center">
+              <span class="material-symbols-outlined text-[16px]">call</span>
+              <span>Call Now</span>
+            </a>
+            <a id="dossier-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer"
+              class="bg-[#25D366] hover:bg-[#20bd5a] text-white py-2.5 px-3 rounded-xl text-xs font-medium transition-colors shadow-xs flex items-center justify-center gap-1.5 text-center">
+              <span class="material-symbols-outlined text-[16px]">chat</span>
+              <span>WhatsApp Message</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Deal Summary / Negotiation Receipt -->
+        <div class="bg-[#fafbfc] border border-gray-200/70 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-200/60 pb-2.5">
+            <span class="text-xs text-gray-500 font-medium">Negotiated Price</span>
+            <span class="text-base font-bold text-gray-900 font-sans" id="dossier-price">₹11,800</span>
+          </div>
+
+          <div class="flex items-center justify-between border-b border-gray-200/60 pb-2.5">
+            <span class="text-xs text-gray-500 font-medium">Timeline / Start</span>
+            <span class="text-xs font-medium text-gray-800" id="dossier-timeline">Within 2-3 Days</span>
+          </div>
+
+          <div class="space-y-1 border-b border-gray-200/60 pb-2.5">
+            <span class="text-[11px] font-medium uppercase text-gray-400 block">Agreed Terms</span>
+            <p class="text-xs text-gray-700 leading-relaxed" id="dossier-terms">
+              Standard emulsion with ceiling primer coat. Free touch-up within 1 year warranty.
+            </p>
+          </div>
+
+          <div class="space-y-1">
+            <span class="text-[11px] font-medium uppercase text-gray-400 block">Verbatim Spoken Evidence</span>
+            <p class="text-xs text-gray-600 italic leading-relaxed bg-white p-2.5 rounded-xl border border-gray-200/60" id="dossier-evidence">
+              "Yes, we can do it for 11,800 final price. We can start immediately and finish within 2-3 days."
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3.5 border-t border-gray-100 bg-[#fafbfc] flex items-center justify-between">
+        <button type="button" id="btn-dossier-copy-all"
+          class="px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[15px]">assignment</span>
+          <span>Copy Full Deal Sheet</span>
+        </button>
+        <button type="button" id="btn-dossier-done"
+          class="px-5 py-2 bg-gray-900 hover:bg-black text-white text-xs font-medium rounded-xl transition-colors shadow-xs cursor-pointer">
+          Done
+        </button>
+      </div>
+
+    </div>
   </div>
 
   <!-- ─── Add Phone Number Modal ──────────────────────────────────────── -->

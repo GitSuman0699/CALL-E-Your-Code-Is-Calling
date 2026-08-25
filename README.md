@@ -1,117 +1,141 @@
-# 🏹 QuoteHunter — AI-Powered Voice Quote Aggregator
+# 🏹 QuoteHunter — Autonomous AI Voice Negotiation Hub
 
-> **Autonomous AI voice agent that calls multiple service providers in parallel, negotiates real-world price quotes via CALL-E, grounds results in spoken evidence spans, and renders competitive comparison matrices in real time.**
+> **Autonomous voice agent swarm that calls multiple local service providers in parallel via CALL-E, negotiates price quotes in real time, extracts structured spoken evidence, and provides an executive deal hand-off dossier for human closing.**
 
 Built for the **CALL-E: Your Code Is Calling** Hackathon.
 
 ---
 
-## 🌟 The Problem
+## 🌟 The Problem & Opportunity
 
-When hiring local service providers (painters, plumbers, electricians, caterers, contractors), **no public pricing API exists**. Homeowners and business operators spend 2–4 hours calling 5 to 10 local vendors, repeating the same job requirements, waiting through phone tag, and taking manual notes.
+When hiring local contractors or service providers (painters, plumbers, electricians, carpenters), **no public pricing API exists**. Homeowners and businesses typically spend 2–4 hours calling 5 to 10 local vendors, repeating the same job requirements, waiting through voicemail, and jotting down disorganized notes.
 
-**Why Phone Calls Are Irreplaceable:**
-- Local tradespeople and small contractors rarely have booking APIs or up-to-date pricing websites.
-- Price quotes require real-time conversational negotiation (*"Does that include ceiling paint?", "Are materials separate?", "When can you start?"*).
-- Phone calling is the only ubiquitous channel for local commercial discovery.
-
----
-
-## 🚀 The Solution: QuoteHunter
-
-QuoteHunter allows users to describe their job **once**. It dispatches parallel CALL-E voice agents to call every vendor simultaneously:
-1. **Parallel Outbound Calling**: Dials multiple vendors in parallel via CALL-E API with automatic retry and exponential backoff.
-2. **Granular Real-Time Status Stream**: Tracks live call lifecycle from *Provisioning* ➔ *Carrier Dialing* ➔ *Phone Ringing 🔔* ➔ *Live On-Call 🎙️* ➔ *Schema Extraction 📊*.
-3. **Strict Structured Extraction**: Uses JSON schemas (`result_schema`) to validate price estimates, start dates, conditions, and transcript evidence snippets.
-4. **Safety by Default**: Features AI identity disclosure, stable request-derived idempotency keys (`qh_<jobId>_<vendorId>`), and fail-closed outcome classifications.
-5. **Human-in-the-Loop Booking**: Agents gather intelligence and compare numbers, but committing and booking requires explicit human confirmation.
+**Why Autonomous Phone Calling is the Solution:**
+* **Ubiquitous Channel**: Phone calls are the universal standard for local trade commerce.
+* **Dynamic Negotiation**: Real-world quotes require multi-turn conversational negotiation (*"Are materials included?", "Can you start earlier?", "Is that your best final price?"*).
+* **Parallel Swarms**: Rather than calling vendors one-by-one over hours, QuoteHunter dispatches parallel CALL-E voice agents to negotiate with all vendors simultaneously in under 2 minutes.
 
 ---
 
-## 🏗️ Architecture
+## 🚀 Key Features & Capabilities
+
+### 1. ⚡ True Concurrent Parallel Calling
+* **Parallel Swarms (`Promise.allSettled`)**: Dials multiple vendors simultaneously with isolated idempotency keys (`qh_<jobId>_<vendorId>`) to prevent duplicate telecom dials.
+* **Auto-Extraction & Custom Numbers**: Paste multiple phone numbers directly into the description prompt or add individual vendors via the E.164 formatted number modal.
+
+### 2. 🛡️ Pre-Flight Verification & 3-Second Safety Buffer
+* **Pre-Call Verification Modal**: Reviews prompt instructions and target numbers before triggering telecom carriers.
+* **Circular SVG Countdown Ring ("Apple / Undo" Style)**: Features a 3-second animated circular countdown ring inside the bot status pill with an inline **`✕ Cancel`** button to abort before carrier network dispatch.
+
+### 3. 📡 Granular Real-Time SSE Stream & Live Timer
+* **Dual-Stream Lifecycle Tracking**: Live carrier status from `Provisioning` ➔ `Connecting Carrier` ➔ `Ringing 🔔` ➔ `In-Call 🎙️` ➔ `Extracting Quote 📊` ➔ `Quoted ✅`.
+* **Dynamic Working Timer**: Real-time counter (`Working for 1s`, `2s`, `3s`...) updating per second during the hunt.
+
+### 4. 🤝 Deal Hand-Off Dossier & Human Closing ("Contact & Book")
+* **AI Negotiates, Human Closes**: Numbers remain masked during search and unmask upon clicking **"Contact & Book"**.
+* **1-Click Quick Actions**:
+  - 📞 **Direct Dial** (`tel:` link for 1-tap mobile/softphone calling).
+  - 💬 **1-Click WhatsApp Direct**: Opens WhatsApp with a pre-filled negotiation confirmation message.
+  - 📋 **Copy Deal Sheet**: Exports formatted negotiation summary (Price, Timeline, Terms, Audio Quote) to clipboard.
+
+### 5. 🎙️ Full Conversation Player & Zero-Fabrication Guard
+* Turn-by-turn speech waveform player with scrubber, audio playback, latency metrics, and verbatim evidence snippets.
+* **Zero-Fabrication Guarantee**: Canceled, declined, or unanswered calls display an honest *"No Conversation Recorded"* state.
+
+### 6. 🎨 Pure In-App UI / Zero System Popups
+* 100% custom in-app floating toasts (`showToast`) and minimalist modal dialogs (`showCustomConfirm`). Zero browser `alert()`, `confirm()`, or `prompt()` popups.
+* **Recents Thread History**: Persistent sidebar with inline renaming (`Enter` to save, `Escape` to cancel) and custom delete modal.
+
+---
+
+## 🏗️ System Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Client["Frontend (Luminous Dark Glassmorphism UI)"]
-        UI["QuoteHunter Dashboard"]
-        Radar["Live Radar with Granular State Badges"]
-        Matrix["Competitive Quote Matrix Table"]
-        Modal["Grounded Evidence & Transcript Modal"]
+    subgraph Client["Frontend (QuoteHunter Web App)"]
+        UI["Main Chat & Preset Prompt Hub"]
+        VerifyModal["Pre-Call Verification Modal"]
+        CountdownRing["3s Circular Countdown Buffer"]
+        ThreadView["Recent Threads & Swarm Dashboard"]
+        DossierModal["Deal Hand-off Dossier (Call / WhatsApp)"]
+        AudioModal["Full Conversation Waveform Player"]
     end
 
     subgraph Server["Backend (Node.js + Express + TypeScript)"]
-        API["REST API (/api/quotes)"]
-        SSE["Server-Sent Events (/api/events)"]
+        Routes["Quote Routes (/api/quotes)"]
+        SSEStream["Server-Sent Events (/api/events/:jobId)"]
         Orchestrator["Quote Orchestrator"]
-        Store["Reactive Event Store"]
+        CalleService["CALL-E Telecom Service"]
     end
 
-    subgraph CALLE["CALL-E Telephony & AI Engine"]
-        CallsAPI["CALL-E Calls REST API (/v1/calls)"]
-        EventsAPI["Developer Events Stream (/v1/calls/:id/events)"]
-        Voice["Outbound Voice AI Agent (English)"]
+    subgraph CALLE["CALL-E Telephony & AI Cloud"]
+        RESTCalls["Calls REST API (/v1/calls)"]
+        DevEvents["Developer Events Stream (/v1/calls/:id/events)"]
+        PSTN["Global PSTN / Cellular Telecom Carrier"]
     end
 
-    UI -->|1. Submit Job & Target Numbers| API
-    API --> Orchestrator
-    Orchestrator -->|2. Parallel Outbound Calls with Idempotency Key| CallsAPI
-    CallsAPI --> Voice
-    Voice -->|3. Audio Conversation & ASR| CallsAPI
-    EventsAPI -->|4. Live Lifecycle Events: Ringing, On-Call, Syncing| Orchestrator
-    CallsAPI -->|5. Structured Quotes & Transcripts| Orchestrator
-    Orchestrator --> Store
-    Store -->|6. Real-Time SSE Stream| SSE
-    SSE --> Radar
-    SSE --> Matrix
-    Matrix -->|7. Inspect Evidence & Copy Packet| Modal
+    UI -->|1. Submit Job & Numbers| VerifyModal
+    VerifyModal -->|2. Confirm Make Call| CountdownRing
+    CountdownRing -->|3. Dispatches after 3s buffer| Routes
+    Routes --> Orchestrator
+    Orchestrator --> CalleService
+    CalleService -->|4. Parallel Outbound Calls (Promise.allSettled)| RESTCalls
+    RESTCalls --> PSTN
+    PSTN -->|5. Voice AI Negotiation Call| PSTN
+    DevEvents -->|6. Real-Time Events (Ringing, In-Call, Analyzing)| CalleService
+    RESTCalls -->|7. Structured Result Schemas & Transcripts| CalleService
+    CalleService --> Orchestrator
+    Orchestrator -->|8. Real-Time Stream Updates| SSEStream
+    SSEStream --> ThreadView
+    ThreadView -->|9. Inspect & Contact Vendor| DossierModal
+    ThreadView -->|10. Listen to Audio & Review Turns| AudioModal
 ```
 
 ---
 
-## 🛡️ Safety & Production Principles
-
-QuoteHunter strictly adheres to the core safety principles of `awesome-phone-call-agents`:
+## 🛡️ Production & Telephony Principles
 
 | Principle | Implementation in QuoteHunter |
-|---|---|
-| **Identity Disclosure** | The AI agent always clearly introduces itself on call pickup: *"Hi, I am QuoteHunter AI calling on behalf of a customer regarding a [category] job."* |
-| **Idempotency Protection** | Every outbound call is dispatched with a unique `Idempotency-Key` header (`qh_<jobId>_<vendorId>`) to prevent duplicate dials on network retries or double-clicks. |
-| **Fail-Closed Dispositions** | Silence, busy tones, or answering machines are never treated as consent or quotes. Calls are strictly classified as `Quoted`, `Voicemail/No-Answer`, `Declined`, or `Failed`. |
-| **Transcript-Grounded Evidence** | Every price and timeline quote is anchored in a verbatim spoken transcript span with confidence scoring (`High`, `Medium`, `Low`). |
-| **Human-in-the-Loop Authority** | The AI only collects estimates and compares options; final booking and financial commitment requires explicit human confirmation via the **Select & Book** action. |
+| :--- | :--- |
+| **AI Identity Disclosure** | The AI agent introduces itself immediately on pickup: *"Hi, I am QuoteHunter AI calling on behalf of a customer regarding a [category] job."* |
+| **Idempotency Protection** | Every outbound call is dispatched with a unique `Idempotency-Key` header (`qh_<jobId>_<vendorId>`) to prevent duplicate dials on network retries. |
+| **Safety Pre-Flight Buffer** | 3-second animated circular SVG countdown ring allows users to stop the call before the carrier PSTN network is paged. |
+| **Fail-Closed Dispositions** | Silence, busy tones, or unanswered calls are strictly classified as `No-Answer`, `Declined`, or `Canceled` without hallucinating quotes. |
+| **Grounded Spoken Evidence** | Every price and timeline quote is anchored in a verbatim spoken transcript snippet with confidence validation. |
+| **Human Authority Closing** | AI agents collect estimates and negotiate terms; final booking and financial authorization is executed by the human user via the **Contact & Book** Dossier. |
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Technology Stack
 
-- **CALL-E Integration**: Direct REST API integration (`/v1/calls`, `/v1/calls/:id/events`) with retry logic, exponential backoff, and JSON schema extraction.
-- **Backend**: Node.js, Express, TypeScript, Server-Sent Events (SSE).
-- **Frontend**: Dark Glassmorphism, CSS audio waveforms, JetBrains Mono data typography, Vanilla JS & CSS.
-- **Modes**: 
-  - **`📞 Live CALL-E`**: 100% production mode with real outbound carrier calls.
-  - **`⚡ Interactive Demo`**: Client-side interactive simulation for zero-cost offline exploration.
+* **Backend**: Node.js, Express, TypeScript, Server-Sent Events (SSE).
+* **AI Telephony**: CALL-E REST API (`/v1/calls`, `/v1/calls/:id/events`), JSON Schema extraction.
+* **Frontend**: HTML5, Vanilla JavaScript (ES6+), Vanilla Tailwind CSS utilities, Google Material Symbols.
+* **Audio & Speech Engine**: Web Speech Synthesis API, HTML5 Audio, phonetic text normalizer.
+* **Storage**: LocalStorage thread persistence with full state restoration.
 
 ---
 
 ## 🚦 Quickstart & Local Setup
 
 ### Prerequisites
-- Node.js v18+ (tested on v24.15.0)
-- npm
+* **Node.js** v18+ (tested on v20+)
+* **npm**
 
 ### Installation
 
 ```bash
-# 1. Clone or navigate to the repository
-cd "CALL-E Your Code Is Calling"
+# 1. Clone the repository
+git clone https://github.com/GitSuman0699/CALL-E-Your-Code-Is-Calling.git
+cd "CALL-E-Your-Code-Is-Calling"
 
 # 2. Install dependencies
 npm install
 
 # 3. Configure environment variables
-# Copy .env.example or create .env:
-# CALLE_API_KEY=iams_live_your_api_key_here
-# PORT=3000
+# Create a .env file in the root directory:
+CALLE_API_KEY=your_calle_api_key_here
+PORT=3000
 
 # 4. Start development server
 npm run dev
@@ -121,23 +145,35 @@ Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## 📱 User Workflow Walkthrough
+## 📱 Complete User Workflow
 
-1. **Configure Job**: Select a category (*Painting, Plumbing, Electrical*) and customize the job description.
-2. **Manage Vendor Queue**: 
-   - Use **`Clear All`** to remove dummy presets.
-   - Click **`+ Add`** to enter your mobile number (or custom contractors) in E.164 format (e.g. `+919876543210` or `+14155550100`).
-3. **Launch Hunt**: Click **`🚀 Launch Parallel AI Call Hunt`**.
-4. **Watch Real-Time Progression**:
-   - `🤖 Initializing Agent...` ➔ `📞 Connecting Carrier...` ➔ `🔔 Ringing Phone...` ➔ `🎙️ Live On-Call` ➔ `📊 Extracting Quote...` ➔ `Quoted ✅`.
-5. **Inspect & Action**:
-   - Click **"Select & Book"** or **"View Details"** to open the **Grounded Evidence Modal**.
-   - Review the verbatim spoken transcript span, confidence score, and call notes.
-   - Click **"Copy Evidence Packet"** to export structured JSON for CRM/Sheets.
-   - Click **"Export CSV"** for the complete comparison matrix.
+```
+[ 1. Select Preset or Type Prompt ] 
+                │
+                ▼
+[ 2. Add Phone Number(s) with Country Code ] 
+                │
+                ▼
+[ 3. Click Make Call ➔ Review "Check Call Details" Popup ]
+                │
+                ▼
+[ 4. 3-Second Animated Countdown Ring (Instant Cancel Window) ]
+                │
+                ▼
+[ 5. Live Swarm Thread: Real-Time Dialing, Ringing & In-Call Status ]
+                │
+                ▼
+[ 6. Automatic Best Quote Calculation & Side-by-Side Comparison ]
+                │
+                ▼
+[ 7. Click "Contact & Book" ➔ Reveal Unmasked Number, 1-Click Call / WhatsApp ]
+                │
+                ▼
+[ 8. Click "View Full Conversation" ➔ Turn-by-Turn Spoken Waveform Player ]
+```
 
 ---
 
 ## 📄 License
 
-MIT License. Built for the community and the CALL-E ecosystem.
+MIT License. Built for the **CALL-E: Your Code Is Calling** Hackathon.
