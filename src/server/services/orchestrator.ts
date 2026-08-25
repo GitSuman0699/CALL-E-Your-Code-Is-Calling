@@ -3,6 +3,8 @@ import { quoteStore } from '../store.js';
 import { calleService } from './calle.js';
 
 export class QuoteOrchestrator {
+  private activeSimulatedTimers: Map<string, NodeJS.Timeout[]> = new Map();
+
   /**
    * Start a new quote hunt workflow across target vendors
    */
@@ -81,17 +83,19 @@ export class QuoteOrchestrator {
    */
   private async executeSimulatedJob(job: QuoteHuntJob) {
     quoteStore.updateJobStatus(job.id, 'active');
+    const timers: NodeJS.Timeout[] = [];
+    this.activeSimulatedTimers.set(job.id, timers);
 
     // Simulate staggered parallel phone calls
     job.vendors.forEach((vendor, index) => {
       const staggerDelay = index * 1200;
-      setTimeout(() => {
+      const t1 = setTimeout(() => {
         // Dialing state
         quoteStore.updateVendor(job.id, vendor.id, { status: 'dialing' });
 
         // In-call state after 2.5s
         const inCallDelay = 2500 + Math.random() * 1500;
-        setTimeout(() => {
+        const t2 = setTimeout(() => {
           quoteStore.updateVendor(job.id, vendor.id, {
             status: 'in-call',
             transcriptSummary: 'Connected. AI agent is discussing requirements and rates...',
@@ -99,18 +103,23 @@ export class QuoteOrchestrator {
 
           // Call completion with realistic quotes based on category & language
           const completeDelay = 4000 + index * 2500 + Math.random() * 2000;
-          setTimeout(() => {
+          const t3 = setTimeout(() => {
             this.applySimulatedVendorResult(job, vendor, index);
           }, completeDelay);
+          timers.push(t3);
         }, inCallDelay);
+        timers.push(t2);
       }, staggerDelay);
+      timers.push(t1);
     });
 
     // Mark job completed after all simulated calls finish
     const totalDuration = 6000 + job.vendors.length * 3500;
-    setTimeout(() => {
+    const tFinal = setTimeout(() => {
       quoteStore.updateJobStatus(job.id, 'completed');
+      this.activeSimulatedTimers.delete(job.id);
     }, totalDuration);
+    timers.push(tFinal);
   }
 
   private applySimulatedVendorResult(job: QuoteHuntJob, vendor: TargetVendor, index: number) {
@@ -183,6 +192,38 @@ export class QuoteOrchestrator {
       evidenceSnippet: preset.evidence,
       providerNotes: preset.notes,
       transcriptSummary: `Verified quote received: ${preset.price} for ${preset.avail}.`,
+    });
+  }
+
+  /**
+   * Cancel an active quote hunt and abort all running carrier calls / timers
+   */
+  async cancelQuoteHunt(jobId: string) {
+    const job = quoteStore.getJob(jobId);
+    if (!job) return;
+
+    // 1. Clear any active simulated timers
+    const timers = this.activeSimulatedTimers.get(jobId);
+    if (timers) {
+      timers.forEach(t => clearTimeout(t));
+      this.activeSimulatedTimers.delete(jobId);
+    }
+
+    // 2. Abort live CALL-E phone calls & carrier connections
+    await calleService.cancelJobCalls(jobId);
+
+    // 3. Mark job as failed / canceled
+    quoteStore.updateJobStatus(jobId, 'failed');
+
+    // 4. Mark any pending or in-flight vendors as canceled
+    job.vendors.forEach(v => {
+      if (['pending', 'initializing', 'dialing', 'ringing', 'in-call', 'analyzing'].includes(v.status)) {
+        quoteStore.updateVendor(jobId, v.id, {
+          status: 'failed',
+          transcriptSummary: 'Call was canceled by user.',
+          providerNotes: 'Call stopped by user request.',
+        });
+      }
     });
   }
 }

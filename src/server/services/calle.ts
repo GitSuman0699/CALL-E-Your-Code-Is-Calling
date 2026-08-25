@@ -28,6 +28,8 @@ export class CalleService {
   private apiKey: string | null = null;
   private baseUrl: string = 'https://api.heycall-e.com';
   private isConfigured: boolean = false;
+  private activeJobAbortControllers: Map<string, AbortController> = new Map();
+  private activeJobCallIds: Map<string, Set<string>> = new Map();
 
   constructor() {
     const key = process.env.CALLE_API_KEY;
@@ -42,6 +44,42 @@ export class CalleService {
 
   isLive(): boolean {
     return this.isConfigured && this.apiKey !== null;
+  }
+
+  /**
+   * Cancel and terminate all in-flight live calls and polling operations for a given job
+   */
+  async cancelJobCalls(jobId: string): Promise<void> {
+    console.log(`🛑 [CALL-E Live] Terminating all active operations for job ${jobId}...`);
+
+    // 1. Abort all polling loops and pending fetch operations
+    const controller = this.activeJobAbortControllers.get(jobId);
+    if (controller) {
+      controller.abort();
+      this.activeJobAbortControllers.delete(jobId);
+    }
+
+    // 2. Dispatch cancellation signals to CALL-E API for each registered in-flight call ID
+    const callIds = this.activeJobCallIds.get(jobId);
+    if (callIds && callIds.size > 0 && this.apiKey) {
+      const cancelPromises = Array.from(callIds).map(async (callId) => {
+        try {
+          console.log(`🛑 [CALL-E Live] Requesting immediate carrier hangup for call ${callId}...`);
+          await fetch(`${this.baseUrl}/v1/calls/${callId}/cancel`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${this.apiKey}` },
+          }).catch(() => {});
+          await fetch(`${this.baseUrl}/v1/calls/${callId}/abort`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${this.apiKey}` },
+          }).catch(() => {});
+        } catch (err) {
+          console.warn(`Could not cancel call ${callId}:`, err);
+        }
+      });
+      await Promise.allSettled(cancelPromises);
+      this.activeJobCallIds.delete(jobId);
+    }
   }
 
   /**
@@ -61,8 +99,18 @@ export class CalleService {
         // Rate limit (429) or Server error (5xx) -> Retry
         console.warn(`⚠️ [CALL-E] Request returned status ${response.status}. Retrying attempt ${attempt}/${maxRetries} in ${delay}ms...`);
       } catch (networkErr: any) {
+        // If aborted by user, immediately stop without retrying
+        if (options.signal?.aborted || networkErr.name === 'AbortError' || String(networkErr.message || '').toLowerCase().includes('aborted')) {
+          throw networkErr;
+        }
+
         console.warn(`⚠️ [CALL-E] Network error: ${networkErr.message}. Retrying attempt ${attempt}/${maxRetries} in ${delay}ms...`);
         if (attempt === maxRetries) throw networkErr;
+      }
+
+      // Check if aborted before waiting
+      if (options.signal?.aborted) {
+        throw new Error('This operation was aborted.');
       }
 
       await new Promise((res) => setTimeout(res, delay));
@@ -88,10 +136,16 @@ export class CalleService {
 
     const { jobId, category, description, vendors, onVendorUpdate } = params;
 
+    const abortController = new AbortController();
+    this.activeJobAbortControllers.set(jobId, abortController);
+    this.activeJobCallIds.set(jobId, new Set());
+
     const resultSchema = getRecipientResultSchema(category) as any;
 
     const callPromises = vendors.map(async (vendor) => {
       try {
+        if (abortController.signal.aborted) return;
+
         // E.164 phone formatting
         let cleanedPhone = vendor.phone.replace(/[\s\(\)\-]/g, '').trim();
         if (!cleanedPhone.startsWith('+')) {
@@ -157,6 +211,7 @@ Safety & Compliance Rules:
             Authorization: `Bearer ${this.apiKey}`,
           },
           body: JSON.stringify(payload),
+          signal: abortController.signal,
         });
 
         const createData = (await createRes.json()) as any;
@@ -179,6 +234,9 @@ Safety & Compliance Rules:
         const callId = createData.id;
         console.log(`📡 [CALL-E Live] Call placed successfully! Call ID: ${callId} for ${vendor.name}`);
 
+        const currentCallIds = this.activeJobCallIds.get(jobId);
+        if (currentCallIds) currentCallIds.add(callId);
+
         onVendorUpdate(vendor.id, {
           callId,
           status: 'initializing',
@@ -186,12 +244,21 @@ Safety & Compliance Rules:
         });
 
         // Poll for results and live events with 1.5s interval and 5 minute timeout
-        const completedCall = await this.pollCallResult(callId, vendor, onVendorUpdate, 1500, 300000);
+        const completedCall = await this.pollCallResult(callId, vendor, onVendorUpdate, 1500, 300000, abortController.signal);
 
         console.log(`✅ [CALL-E Live] Call ${callId} completed. Status: ${completedCall.status}`);
 
         this.processCallResult(vendor, completedCall, onVendorUpdate);
       } catch (err: any) {
+        if (abortController.signal.aborted) {
+          console.log(`🛑 [CALL-E Live] Call processing aborted for ${vendor.name}`);
+          onVendorUpdate(vendor.id, {
+            status: 'failed',
+            providerNotes: 'Call stopped by user.',
+            transcriptSummary: 'Call was canceled by user.',
+          });
+          return;
+        }
         console.error(`❌ [CALL-E Live] Unhandled error for ${vendor.name} (${vendor.phone}):`, err);
         onVendorUpdate(vendor.id, {
           status: 'error',
@@ -201,7 +268,12 @@ Safety & Compliance Rules:
       }
     });
 
-    await Promise.allSettled(callPromises);
+    try {
+      await Promise.allSettled(callPromises);
+    } finally {
+      this.activeJobAbortControllers.delete(jobId);
+      this.activeJobCallIds.delete(jobId);
+    }
   }
 
   /**
@@ -212,12 +284,20 @@ Safety & Compliance Rules:
     vendor: TargetVendor,
     onVendorUpdate: (vendorId: string, updates: Partial<TargetVendor>) => void,
     intervalMs: number,
-    timeoutMs: number
+    timeoutMs: number,
+    abortSignal?: AbortSignal
   ): Promise<CalleApiResponse> {
     const startTime = Date.now();
     let lastEventId = '';
 
     while (Date.now() - startTime < timeoutMs) {
+      if (abortSignal?.aborted) {
+        throw new Error('Swarm aborted by user');
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      if (abortSignal?.aborted) {
+        throw new Error('Swarm aborted by user');
+      }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
 
       try {

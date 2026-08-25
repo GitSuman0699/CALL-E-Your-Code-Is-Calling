@@ -113,6 +113,12 @@ function loadThreadsFromStorage() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         recentThreads = parsed.filter(t => t.id !== 'thread-default');
+        // Restore full prompt title for any threads previously truncated with ...
+        recentThreads.forEach(t => {
+          if (t.title && t.title.endsWith('...') && t.prompt) {
+            t.title = t.prompt;
+          }
+        });
         return;
       }
     }
@@ -166,13 +172,15 @@ function switchView(viewName, threadData = null) {
     viewThread?.classList.remove('hidden-view');
 
     if (topBarTitle) {
-      topBarTitle.textContent = threadData.prompt;
+      topBarTitle.textContent = threadData.title || threadData.prompt;
     }
     if (threadUserPrompt) {
       threadUserPrompt.textContent = threadData.prompt;
     }
 
     const statusBadge = $('#thread-status-badge');
+    const stopBtn = $('#btn-stop-swarm');
+
     if (statusBadge) {
       if (threadData.isLive) {
         statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-medium';
@@ -184,8 +192,10 @@ function switchView(viewName, threadData = null) {
     }
 
     if (threadData.isLive) {
-      startWorkingTimer();
+      if (stopBtn) stopBtn.classList.remove('hidden-view');
+      startWorkingTimer(threadData.createdAt);
     } else {
+      if (stopBtn) stopBtn.classList.add('hidden-view');
       stopWorkingTimer();
       const botContainer = $('#thread-bot-status-container');
       if (botContainer) botContainer.classList.add('hidden-view');
@@ -202,6 +212,9 @@ $('#btn-new-chat')?.addEventListener('click', () => {
 });
 
 /* ─── Recents Sidebar Controller ────────────────────────────────────── */
+let editingThreadIndex = null;
+let threadToDeleteIndex = null;
+
 function renderRecentsList() {
   if (!recentsList) return;
 
@@ -216,7 +229,8 @@ function renderRecentsList() {
 
   recentsList.innerHTML = recentThreads.map((t, idx) => {
     const isActive = activeThread && activeThread.id === t.id && currentView === 'thread';
-    const displayTitle = t.title.length > 24 ? t.title.slice(0, 24) + '...' : t.title;
+    const isEditing = editingThreadIndex === idx;
+    const fullTitle = t.title || t.prompt || 'Negotiation';
 
     return `
       <div 
@@ -229,11 +243,21 @@ function renderRecentsList() {
       >
         <div class="flex items-center gap-2 truncate flex-1 min-w-0 pr-1">
           <span class="w-1.5 h-1.5 rounded-full ${t.isLive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'} shrink-0"></span>
-          <span class="truncate" id="thread-title-${idx}">${escapeHtml(displayTitle)}</span>
+          ${isEditing ? `
+            <input 
+              type="text" 
+              id="thread-inline-edit-${idx}" 
+              class="w-full bg-white border border-gray-400 rounded px-1.5 py-0.5 text-xs text-gray-900 outline-none focus:border-gray-900 shadow-2xs font-normal" 
+              value="${escapeHtml(fullTitle)}"
+              onclick="event.stopPropagation()"
+            />
+          ` : `
+            <span class="truncate" id="thread-title-${idx}" title="${escapeHtml(fullTitle)}">${escapeHtml(fullTitle)}</span>
+          `}
         </div>
 
         <!-- 3-Dot Options Trigger (Appears on Hover) -->
-        <div class="relative shrink-0" onclick="event.stopPropagation()">
+        <div class="relative shrink-0 ${isEditing ? 'hidden' : ''}" onclick="event.stopPropagation()">
           <button 
             type="button" 
             onclick="toggleRecentMenu(event, ${idx})"
@@ -245,11 +269,11 @@ function renderRecentsList() {
 
           <!-- Floating Dropdown Menu -->
           <div id="recent-menu-${idx}" class="recent-menu-dropdown hidden-view absolute right-0 top-6 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 w-28 text-xs font-normal text-gray-700 backdrop-blur-sm">
-            <button type="button" onclick="renameThread(event, ${idx})" class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors">
+            <button type="button" onclick="renameThread(event, ${idx})" class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors cursor-pointer">
               <span class="material-symbols-outlined text-[14px] text-gray-400 font-light">edit</span>
               <span>Rename</span>
             </button>
-            <button type="button" onclick="deleteThread(event, ${idx})" class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-rose-50 text-rose-600 transition-colors">
+            <button type="button" onclick="openDeleteThreadModal(event, ${idx})" class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-rose-50 text-rose-600 transition-colors cursor-pointer">
               <span class="material-symbols-outlined text-[14px] text-rose-500 font-light">delete</span>
               <span>Delete</span>
             </button>
@@ -258,6 +282,49 @@ function renderRecentsList() {
       </div>
     `;
   }).join('');
+
+  if (editingThreadIndex !== null) {
+    const input = document.getElementById(`thread-inline-edit-${editingThreadIndex}`);
+    if (input) {
+      input.focus();
+      input.select();
+      
+      let isHandled = false;
+      const saveEdit = () => {
+        if (isHandled || editingThreadIndex === null) return;
+        isHandled = true;
+        const currentIdx = editingThreadIndex;
+        const newTitle = input.value.trim();
+        editingThreadIndex = null;
+        if (newTitle && recentThreads[currentIdx]) {
+          recentThreads[currentIdx].title = newTitle;
+          saveThreadsToStorage();
+          if (activeThread && activeThread.id === recentThreads[currentIdx].id && topBarTitle) {
+            topBarTitle.textContent = newTitle;
+          }
+        }
+        renderRecentsList();
+      };
+
+      const cancelEdit = () => {
+        if (isHandled) return;
+        isHandled = true;
+        editingThreadIndex = null;
+        renderRecentsList();
+      };
+
+      input.addEventListener('blur', saveEdit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelEdit();
+        }
+      });
+    }
+  }
 }
 
 window.toggleRecentMenu = function(e, idx) {
@@ -276,27 +343,38 @@ window.toggleRecentMenu = function(e, idx) {
 window.renameThread = function(e, idx) {
   e.stopPropagation();
   document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
-  const thread = recentThreads[idx];
-  if (!thread) return;
-
-  const newTitle = prompt('Rename negotiation thread:', thread.title);
-  if (newTitle && newTitle.trim()) {
-    thread.title = newTitle.trim();
-    saveThreadsToStorage();
-    renderRecentsList();
-    if (activeThread && activeThread.id === thread.id && topBarTitle) {
-      topBarTitle.textContent = thread.title;
-    }
-  }
+  editingThreadIndex = idx;
+  renderRecentsList();
 };
 
-window.deleteThread = function(e, idx) {
+window.openDeleteThreadModal = function(e, idx) {
   e.stopPropagation();
   document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
   const thread = recentThreads[idx];
   if (!thread) return;
 
-  if (confirm(`Delete negotiation thread "${thread.title}"?`)) {
+  threadToDeleteIndex = idx;
+  const preview = $('#delete-thread-title-preview');
+  if (preview) preview.textContent = thread.title || thread.prompt || 'Negotiation Thread';
+
+  $('#delete-thread-modal')?.classList.remove('hidden-view');
+};
+
+function closeDeleteThreadModal() {
+  threadToDeleteIndex = null;
+  $('#delete-thread-modal')?.classList.add('hidden-view');
+}
+
+$('#btn-cancel-delete-modal')?.addEventListener('click', closeDeleteThreadModal);
+$('#delete-thread-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'delete-thread-modal') closeDeleteThreadModal();
+});
+
+$('#btn-confirm-delete-modal')?.addEventListener('click', () => {
+  if (threadToDeleteIndex === null) return;
+  const idx = threadToDeleteIndex;
+  const thread = recentThreads[idx];
+  if (thread) {
     const isDeletedActive = activeThread && activeThread.id === thread.id;
     recentThreads.splice(idx, 1);
     saveThreadsToStorage();
@@ -305,7 +383,8 @@ window.deleteThread = function(e, idx) {
       switchView('home');
     }
   }
-};
+  closeDeleteThreadModal();
+});
 
 // Close all 3-dot dropdowns when clicking outside
 document.addEventListener('click', () => {
@@ -313,6 +392,7 @@ document.addEventListener('click', () => {
 });
 
 window.loadThread = function(idx) {
+  if (editingThreadIndex !== null) return;
   const t = recentThreads[idx];
   if (t) {
     switchView('thread', t);
@@ -557,16 +637,24 @@ let selectedVendorName = null;
 let workingTimerInterval = null;
 let threadStartTime = null;
 
-function startWorkingTimer() {
+function startWorkingTimer(customStart) {
   stopWorkingTimer();
-  threadStartTime = Date.now();
-  const timerEl = $('#thread-working-timer');
+  if (customStart) {
+    const parsed = new Date(customStart).getTime();
+    threadStartTime = isNaN(parsed) ? Date.now() : parsed;
+  } else {
+    threadStartTime = Date.now();
+  }
+
   const pillContainer = $('#thread-bot-status-container');
   if (pillContainer) pillContainer.classList.remove('hidden-view');
 
   const update = () => {
-    const elapsed = Math.max(1, Math.floor((Date.now() - threadStartTime) / 1000));
-    if (timerEl) timerEl.textContent = `Working for ${elapsed}s`;
+    const timerEl = $('#thread-working-timer');
+    if (timerEl && threadStartTime) {
+      const elapsed = Math.max(1, Math.floor((Date.now() - threadStartTime) / 1000));
+      timerEl.textContent = elapsed < 60 ? `Working for ${elapsed}s` : `Working for ${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+    }
   };
   update();
   workingTimerInterval = setInterval(update, 1000);
@@ -610,11 +698,11 @@ function renderThreadSwarm(results) {
     if (contentGrid) contentGrid.classList.add('hidden-view');
     if (detailsColumn) detailsColumn.classList.add('hidden-view');
 
-    const elapsed = threadStartTime ? Math.max(1, Math.floor((Date.now() - threadStartTime) / 1000)) : 4;
+    const elapsed = threadStartTime ? Math.max(1, Math.floor((Date.now() - threadStartTime) / 1000)) : 1;
     if (workingPill) {
       workingPill.innerHTML = `
         <span class="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin"></span>
-        <span id="thread-working-timer">Working for ${elapsed}s</span>
+        <span id="thread-working-timer">${elapsed < 60 ? `Working for ${elapsed}s` : `Working for ${Math.floor(elapsed / 60)}m ${elapsed % 60}s`}</span>
       `;
     }
   } else if (!isAllCompleted) {
@@ -1086,6 +1174,24 @@ function extractVendorTurns(r, promptText) {
     return r.turns;
   }
 
+  const status = (r?.status || '').toLowerCase();
+  const summaryText = String(r?.summary || '').toLowerCase();
+  const evidenceText = String(r?.evidence || '').toLowerCase();
+  const quoteText = String(r?.quote || '').toLowerCase();
+
+  // If call was canceled, failed, no-answer, or did not produce a valid quote
+  const isFailedOrCanceled = ['failed', 'no-answer', 'refused', 'error', 'canceled', 'declined', 'unanswered'].includes(status)
+    || summaryText.includes('canceled') 
+    || summaryText.includes('stopped')
+    || summaryText.includes('declined')
+    || summaryText.includes('unreachable')
+    || quoteText.includes('no quote')
+    || evidenceText.includes('stopped by user');
+
+  if (isFailedOrCanceled) {
+    return [];
+  }
+
   const price = r?.quote || '$600';
   const timeline = r?.timeline || '2-3 days';
   const evidence = r?.evidence || r?.summary || '';
@@ -1186,6 +1292,63 @@ function openConversationModal(vendorName) {
   // Set active turns using actual evidence & transcript
   activeAudioTurns = extractVendorTurns(r, activeThread?.prompt);
 
+  const convPhone = $('#conv-phone');
+  const convDur = $('#conv-duration-text');
+  const convHash = $('#conv-call-hash');
+  const convAudioId = $('#conv-audio-id');
+  const convDate = $('#conv-date');
+  const turnsContainer = $('#conv-turns-container');
+  const playBtn = $('#btn-play-pause-audio');
+  const scrubber = $('#audio-scrubber');
+
+  if (convPhone) convPhone.textContent = maskPhoneNumber(phone);
+  if (convHash) convHash.textContent = callHash;
+  if (convAudioId) convAudioId.textContent = callHash;
+  if (convDate) {
+    const rawTime = r.createdAt || r.completedAt || activeThread?.createdAt || Date.now();
+    const parsed = new Date(rawTime);
+    const valid = isNaN(parsed.getTime()) ? new Date() : parsed;
+    convDate.textContent = valid.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + valid.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  // Handle Empty / Canceled / Unanswered Turns
+  if (!activeAudioTurns || activeAudioTurns.length === 0) {
+    convAudioDuration = 0;
+    currentConvAudioTime = 0;
+    currentTurnIndex = 0;
+    if (convDur) convDur.textContent = 'Duration 0m 00s';
+    if (playBtn) playBtn.disabled = true;
+    if (scrubber) {
+      scrubber.value = 0;
+      scrubber.disabled = true;
+    }
+    const timeDisplay = $('#audio-time-display');
+    if (timeDisplay) timeDisplay.textContent = '00:00 / 00:00';
+
+    if (turnsContainer) {
+      turnsContainer.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-16 text-center space-y-3">
+          <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+            <span class="material-symbols-outlined text-[24px]">phone_missed</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-800">No Spoken Conversation Recorded</p>
+            <p class="text-xs text-gray-400 mt-1 max-w-sm">
+              ${r.status === 'failed' || (r.summary && r.summary.includes('stopped')) 
+                ? 'This call was canceled before a conversation took place.' 
+                : 'The call was unanswered or declined by the provider.'}
+            </p>
+          </div>
+        </div>
+      `;
+    }
+    $('#conversation-modal')?.classList.remove('hidden-view');
+    return;
+  }
+
+  if (playBtn) playBtn.disabled = false;
+  if (scrubber) scrubber.disabled = false;
+
   // Compute calculated duration per turn based on word count + natural pause
   let cumulative = 0;
   activeAudioTurns.forEach(t => {
@@ -1206,24 +1369,9 @@ function openConversationModal(vendorName) {
   const secs = convAudioDuration % 60;
   const calculatedDurationFormatted = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
 
-  const convPhone = $('#conv-phone');
-  const convDur = $('#conv-duration-text');
-  const convHash = $('#conv-call-hash');
-  const convAudioId = $('#conv-audio-id');
-  const convDate = $('#conv-date');
-
-  if (convPhone) convPhone.textContent = maskPhoneNumber(phone);
   if (convDur) convDur.textContent = `Duration ${calculatedDurationFormatted}`;
-  if (convHash) convHash.textContent = callHash;
-  if (convAudioId) convAudioId.textContent = callHash;
-  if (convDate) {
-    const rawTime = r.createdAt || r.completedAt || activeThread?.createdAt || Date.now();
-    const parsed = new Date(rawTime);
-    const valid = isNaN(parsed.getTime()) ? new Date() : parsed;
-    convDate.textContent = valid.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + valid.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  }
+  updateAudioUI();
 
-  const turnsContainer = $('#conv-turns-container');
   if (turnsContainer) {
     turnsContainer.innerHTML = activeAudioTurns.map((t, idx) => {
       const isAgent = t.role === 'agent';
@@ -1324,7 +1472,7 @@ function playCallRecording() {
 
 function startSpeechSynthesisTurns() {
   if (!('speechSynthesis' in window)) {
-    alert('Voice speech synthesis not supported in this browser.');
+    showToast('Voice speech synthesis not supported in this browser.', 'error');
     return;
   }
 
@@ -1511,11 +1659,117 @@ $('#conversation-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'conversation-modal') closeConversationModal();
 });
 
+/* ─── Custom In-App Toast & Modal Feedback System ───────────────────── */
+function showToast(message, type = 'info') {
+  const container = $('#toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 font-sans ${
+    type === 'success' 
+      ? 'bg-gray-900 text-white border-gray-800' 
+      : (type === 'error' ? 'bg-rose-900 text-white border-rose-800' : 'bg-gray-900 text-white border-gray-800')
+  }`;
+
+  const iconName = type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info');
+  const iconColor = type === 'success' ? 'text-emerald-400' : (type === 'error' ? 'text-rose-400' : 'text-teal-400');
+
+  toast.innerHTML = `
+    <span class="material-symbols-outlined text-[17px] ${iconColor} shrink-0 font-light">${iconName}</span>
+    <span class="leading-tight">${escapeHtml(message)}</span>
+  `;
+
+  container.appendChild(toast);
+
+  // Trigger animation
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-2', 'opacity-0');
+  });
+
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 3500);
+}
+
+let onConfirmActionCallback = null;
+
+function showCustomConfirm(options) {
+  const modal = $('#custom-confirm-modal');
+  if (!modal) return;
+
+  const {
+    title = 'Confirm Action',
+    subtitle = 'Are you sure you want to proceed?',
+    bodyText = '',
+    confirmText = 'Confirm',
+    confirmBgClass = 'bg-gray-900 hover:bg-black',
+    icon = 'help_outline',
+    iconColorClass = 'text-rose-600',
+    iconBgClass = 'bg-rose-50 border-rose-100',
+    onConfirm = () => {},
+  } = options;
+
+  onConfirmActionCallback = onConfirm;
+
+  const titleEl = $('#confirm-modal-title');
+  const subEl = $('#confirm-modal-subtitle');
+  const bodyEl = $('#confirm-modal-body');
+  const btnText = $('#confirm-modal-btn-text');
+  const actionBtn = $('#btn-action-confirm-modal');
+  const iconEl = $('#confirm-modal-icon');
+  const iconBox = $('#confirm-modal-icon-container');
+
+  if (titleEl) titleEl.textContent = title;
+  if (subEl) subEl.textContent = subtitle;
+  if (btnText) btnText.textContent = confirmText;
+
+  if (bodyText && bodyEl) {
+    bodyEl.textContent = bodyText;
+    bodyEl.classList.remove('hidden-view');
+  } else if (bodyEl) {
+    bodyEl.classList.add('hidden-view');
+  }
+
+  if (actionBtn) {
+    actionBtn.className = `px-4 py-2 ${confirmBgClass} text-white text-xs font-medium rounded-xl transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1.5`;
+  }
+
+  if (iconEl) iconEl.textContent = icon;
+  if (iconBox) {
+    iconBox.className = `w-10 h-10 rounded-full ${iconBgClass} border flex items-center justify-center ${iconColorClass} shrink-0`;
+  }
+
+  modal.classList.remove('hidden-view');
+}
+
+function closeCustomConfirm() {
+  onConfirmActionCallback = null;
+  $('#custom-confirm-modal')?.classList.add('hidden-view');
+}
+
+$('#btn-cancel-confirm-modal')?.addEventListener('click', closeCustomConfirm);
+$('#custom-confirm-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'custom-confirm-modal') closeCustomConfirm();
+});
+
+$('#btn-action-confirm-modal')?.addEventListener('click', () => {
+  if (typeof onConfirmActionCallback === 'function') {
+    const fn = onConfirmActionCallback;
+    closeCustomConfirm();
+    fn();
+  } else {
+    closeCustomConfirm();
+  }
+});
+
 $('#btn-copy-call-hash')?.addEventListener('click', () => {
   const hash = $('#conv-call-hash')?.textContent;
   if (hash) {
     navigator.clipboard.writeText(hash).then(() => {
-      alert('Call ID copied to clipboard: ' + hash);
+      showToast('Call ID copied to clipboard', 'success');
     });
   }
 });
@@ -1524,9 +1778,102 @@ $('#btn-detail-confirm-booking')?.addEventListener('click', () => {
   if (!selectedVendorName || !activeThread) return;
   const r = activeThread.results[selectedVendorName];
   const price = r?.quote || 'quoted price';
-  if (confirm(`Confirm booking with ${selectedVendorName} for ${price}?\n\nThis executes human authorization.`)) {
-    alert(`🎉 Booking Confirmed with ${selectedVendorName} for ${price}!`);
+
+  showCustomConfirm({
+    title: 'Confirm Booking',
+    subtitle: `Execute human authorization for ${selectedVendorName}`,
+    bodyText: `Agreed Quote: ${price}`,
+    confirmText: 'Authorize & Book',
+    confirmBgClass: 'bg-emerald-600 hover:bg-emerald-700',
+    icon: 'check_circle',
+    iconColorClass: 'text-emerald-600',
+    iconBgClass: 'bg-emerald-50 border-emerald-100',
+    onConfirm: () => {
+      showToast(`🎉 Booking Confirmed with ${selectedVendorName} for ${price}!`, 'success');
+    }
+  });
+});
+
+let dispatchCountdownInterval = null;
+let isDispatchPending = false;
+
+// Clear prompt error styling on input
+jobDesc?.addEventListener('input', () => {
+  if (jobDesc.value.trim()) {
+    jobDesc.classList.remove('border-rose-500', 'bg-rose-50/20');
   }
+});
+
+function executeStopSwarm() {
+  if (isDispatchPending) {
+    if (dispatchCountdownInterval) {
+      clearInterval(dispatchCountdownInterval);
+      dispatchCountdownInterval = null;
+    }
+    isDispatchPending = false;
+  }
+
+  const targetJobId = activeThread?.jobId;
+  if (targetJobId) {
+    fetch(`/api/quotes/${targetJobId}/cancel`, { method: 'POST' }).catch(err => {
+      console.warn('Cancel API request completed or failed:', err);
+    });
+  }
+
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+
+  isRunning = false;
+  if (launchBtn) launchBtn.disabled = false;
+  if (activeThread) activeThread.isLive = false;
+  stopWorkingTimer();
+
+  // Mark in-flight vendors as canceled
+  if (activeThread && activeThread.results) {
+    Object.keys(activeThread.results).forEach(k => {
+      const r = activeThread.results[k];
+      if (['initializing', 'dialing', 'ringing', 'in-call', 'in-progress', 'analyzing'].includes(r.status)) {
+        r.status = 'failed';
+        r.summary = 'Call was stopped by user before conversation.';
+      }
+    });
+  }
+
+  const statusBadge = $('#thread-status-badge');
+  if (statusBadge) {
+    statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-medium';
+    statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><span>Canceled</span>';
+  }
+
+  $('#btn-stop-swarm')?.classList.add('hidden-view');
+
+  const botContainer = $('#thread-bot-status-container');
+  if (botContainer) botContainer.classList.add('hidden-view');
+
+  saveThreadsToStorage();
+  renderRecentsList();
+  if (activeThread) renderThreadSwarm(activeThread.results);
+  showToast('Call swarm stopped', 'info');
+}
+
+// Stop / Cancel Active Call Swarm
+$('#btn-stop-swarm')?.addEventListener('click', () => {
+  if (!activeThread) return;
+
+  showCustomConfirm({
+    title: 'Stop Call Swarm?',
+    subtitle: 'This will terminate all in-progress outbound calls.',
+    confirmText: 'Stop Call',
+    confirmBgClass: 'bg-rose-600 hover:bg-rose-700',
+    icon: 'stop_circle',
+    iconColorClass: 'text-rose-600',
+    iconBgClass: 'bg-rose-50 border-rose-100',
+    onConfirm: () => {
+      executeStopSwarm();
+    }
+  });
 });
 
 /* ─── Campaign Launch Handler (Make Call Button) ──────────────────────── */
@@ -1534,7 +1881,17 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (isRunning) return;
 
-  const promptText = (jobDesc?.value.trim()) || 'Call vendor and negotiate a competitive price quote.';
+  const promptText = (jobDesc?.value.trim()) || '';
+
+  // Option A: Require prompt description if empty
+  if (!promptText) {
+    if (jobDesc) {
+      jobDesc.classList.add('border-rose-500', 'bg-rose-50/20');
+      jobDesc.focus();
+    }
+    showToast('Please describe what you want QuoteHunter to ask before calling.', 'info');
+    return;
+  }
 
   // If no vendors added yet, try auto-extracting from prompt text (e.g. +918016086948)
   if (activeVendors.length === 0) {
@@ -1543,7 +1900,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
       phoneMatches.forEach(p => {
         const formatted = p.startsWith('+') ? p : '+' + p;
         if (!activeVendors.some(v => v.phone === formatted)) {
-          activeVendors.push({ name: 'Vendor #' + (activeVendors.length + 1), phone: formatted });
+          activeVendors.push({ name: maskPhoneNumber(formatted), phone: formatted });
         }
       });
       renderPhoneChips();
@@ -1566,15 +1923,14 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     };
   });
 
-  // Create new thread item in Recents
-  const displayTitle = promptText.length > 32 ? promptText.slice(0, 32) + '...' : promptText;
+  // Create new thread item in Recents with complete title
   const newThread = {
     id: 'thread-' + Date.now(),
-    title: displayTitle,
+    title: promptText,
     prompt: promptText,
     isLive: true,
     results: initResults,
-    createdAt: new Date(),
+    createdAt: new Date().toISOString(),
   };
 
   recentThreads.unshift(newThread);
@@ -1585,7 +1941,45 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
   // Switch to Recent Thread view immediately
   switchView('thread', newThread);
 
+  // ── 3-Second Safety Countdown Buffer before Cellular Carrier Dial ──
+  let countdownSec = 3;
+  isDispatchPending = true;
+
+  const updateCountdownPill = () => {
+    const workingPill = $('#thread-working-pill');
+    if (workingPill) {
+      workingPill.innerHTML = `
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+        <span class="text-xs text-amber-800 font-medium font-sans">Dialing carrier in ${countdownSec}s... (Click "Stop Call" to abort)</span>
+      `;
+    }
+  };
+  updateCountdownPill();
+
   try {
+    await new Promise((resolve, reject) => {
+      dispatchCountdownInterval = setInterval(() => {
+        if (!isDispatchPending) {
+          clearInterval(dispatchCountdownInterval);
+          dispatchCountdownInterval = null;
+          reject(new Error('Canceled before dialing'));
+          return;
+        }
+        countdownSec--;
+        if (countdownSec > 0) {
+          updateCountdownPill();
+        } else {
+          clearInterval(dispatchCountdownInterval);
+          dispatchCountdownInterval = null;
+          isDispatchPending = false;
+          resolve(true);
+        }
+      }, 1000);
+    });
+
+    // Start live working timer once countdown completes and network dispatch starts
+    startWorkingTimer();
+
     const res = await fetch('/api/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1603,6 +1997,11 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     }
 
     const jobId = data.job ? data.job.id : data.jobId;
+    newThread.jobId = jobId;
+    if (activeThread && activeThread.id === newThread.id) {
+      activeThread.jobId = jobId;
+    }
+    saveThreadsToStorage();
 
     if (eventSource) eventSource.close();
     eventSource = new EventSource(`/api/events/${jobId}`);
@@ -1625,8 +2024,12 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
       renderRecentsList();
     };
   } catch (err) {
+    if (err.message === 'Canceled before dialing') {
+      console.log('🛑 Dispatched call aborted during 3-second buffer.');
+      return;
+    }
     console.error('Hunt launch failed:', err);
-    alert('Hunt launch failed: ' + (err.message || 'Check network connection'));
+    showToast('Hunt launch failed: ' + (err.message || 'Check network connection'), 'error');
     isRunning = false;
     if (launchBtn) launchBtn.disabled = false;
     newThread.isLive = false;

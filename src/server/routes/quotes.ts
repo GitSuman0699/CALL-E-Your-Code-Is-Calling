@@ -20,6 +20,16 @@ quotesRouter.get('/:id', (req, res) => {
   res.json({ success: true, job });
 });
 
+// POST cancel specific job by ID
+quotesRouter.post('/:id/cancel', (req, res) => {
+  const job = quoteStore.getJob(req.params.id);
+  if (!job) {
+    return res.status(404).json({ success: false, error: 'Job not found' });
+  }
+  quoteOrchestrator.cancelQuoteHunt(req.params.id);
+  res.json({ success: true, message: 'Quote hunt canceled successfully.' });
+});
+
 // POST launch new quote hunt
 quotesRouter.post('/', async (req, res) => {
   try {
