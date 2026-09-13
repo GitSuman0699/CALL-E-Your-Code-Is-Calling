@@ -6,7 +6,7 @@ import { CreateHuntRequest } from '../types.js';
 export const quotesRouter = Router();
 
 // GET all jobs
-quotesRouter.get('/', (req, res) => {
+quotesRouter.get('/', (_req, res) => {
   const jobs = quoteStore.getAllJobs();
   res.json({ success: true, jobs });
 });

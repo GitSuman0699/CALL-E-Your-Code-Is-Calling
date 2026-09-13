@@ -28,7 +28,7 @@ app.use('/api/hunt', quotesRouter);
 app.use('/api/events', eventsRouter);
 
 // Health check and system status
-app.get('/api/status', (req, res) => {
+app.get('/api/status', (_req, res) => {
   res.json({
     status: 'online',
     app: 'QuoteHunter',
@@ -39,7 +39,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // Fallback for SPA routing
-app.get('*', (req, res) => {
+app.get('*', (_req, res) => {
   res.sendFile(path.join(publicPath, 'index.html'));
 });
 

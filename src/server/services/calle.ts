@@ -554,7 +554,7 @@ Safety & Compliance Rules:
   }
 
   private buildTurnsAndMetadata(
-    vendor: TargetVendor,
+    _vendor: TargetVendor,
     call: CalleApiResponse,
     priceEstimate?: string,
     availability?: string,

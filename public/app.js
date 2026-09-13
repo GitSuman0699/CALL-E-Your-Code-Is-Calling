@@ -139,16 +139,9 @@ const recentsList = $('#recents-list');
 const recentsBadge = $('#recents-badge');
 const topBarTitle = $('#top-bar-title');
 const threadUserPrompt = $('#thread-user-prompt');
-const threadSwarmList = $('#thread-swarm-list');
-const winnerName = $('#winner-name');
-const winnerPrice = $('#winner-price');
-const winnerTimeline = $('#winner-timeline');
-const winnerWarranty = $('#winner-warranty');
-const winnerQuoteText = $('#winner-quote-text');
 const jobDesc = $('#job-desc');
 const selectedNumbersContainer = $('#selected-numbers-container');
 const launchBtn = $('#btn-launch-hunt');
-const evidenceModal = $('#evidence-modal');
 const addVendorModal = $('#add-vendor-modal');
 
 /* ─── View Controller ───────────────────────────────────────────────── */

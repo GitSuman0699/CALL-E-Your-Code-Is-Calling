@@ -1,6 +1,6 @@
 import { ServiceCategory } from '../types.js';
 
-export function getRecipientResultSchema(category: ServiceCategory) {
+export function getRecipientResultSchema(_category?: ServiceCategory) {
   return {
     type: 'object',
     required: ['quote_provided', 'price_estimate', 'price_numeric', 'availability', 'evidence'],
