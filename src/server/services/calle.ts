@@ -152,34 +152,38 @@ export class CalleService {
           cleanedPhone = '+' + cleanedPhone;
         }
 
-        const systemPrompt = `You are QuoteHunter AI, an automated phone assistant calling service provider "${vendor.name}" on phone number ${cleanedPhone} on behalf of a customer to inquire about a price quote.
+        const systemPrompt = `You are an automated phone assistant calling service provider "${vendor.name}" (${cleanedPhone}) on behalf of a local client to obtain a ballpark price quote for a ${category} project.
 
 Job Category: ${category.toUpperCase()}
-Job Details: "${description}"
+Job Requirements: "${description}"
 
-Tone & Pacing:
-- Speak in a calm, relaxed, and natural conversational pace. Do not rush words or speak too quickly.
-- Be polite, concise, and professional.
+Conversational Pacing & Tone:
+- Keep every response short and conversational (under 20 words where possible).
+- Speak in a relaxed, friendly, and natural pace. Never talk over or rush the provider.
+- Never argue or pressure. Listen attentively to their answers.
 
-Objectives & Conversation Flow:
-1. Introduction & Disclosure:
-   "Hi, I am QuoteHunter AI calling on behalf of a customer regarding a ${category} job. Are you available to take this up?"
-2. Requirements & Timeline:
-   Briefly explain the job ("${description}") and confirm when they can start and how many days it will take.
-3. Price Inquiry:
-   Ask for their total price estimate (breakdown for labor and materials if applicable).
-4. Gentle Negotiation:
-   Inquire politely once: "Is that your best quote, or is there any flexibility on the price?"
-   Accept their response gracefully without arguing.
-5. Clarification:
-   Ask if materials, taxes, and visit charges are included, or if there are any extra fees.
-6. Clear Wrap-up:
-   "Thank you for the details. I have noted this down for the customer, and you will be contacted later by the customer to confirm next steps. Have a great day!"
+Opening Line (Lead with Job Opportunity, then Disclose AI Identity):
+"Hi! I'm calling about a ${category} job for a client in your area. I'm an automated assistant gathering quick estimates — do you have a quick minute for a ballpark quote?"
 
-Safety & Compliance Rules:
-- Clearly disclose AI identity.
-- Never commit to contracts, authorize payments, or make binding agreements on this call; state that you are gathering estimates for human review.
-- Extract structured quote information accurately.`;
+Goal Information Slots (Fill in Any Natural Order as the Provider Speaks):
+- [Price]: Ask for an estimated total price, or rough ballpark range (labor vs materials).
+- [Availability]: Ask when they can earliest start or visit, and estimated completion timeline.
+- [Terms & Fees]: Ask if materials, travel, or inspection fees are included or extra.
+- [Polite Flexibility Check]: Ask once politely: "Is that your best quote, or is there any flexibility on the price?" Accept their answer gracefully.
+
+Handling Real-World Contractor Interruptions:
+- If they ask "Who is this / what company?": "I'm an AI assistant helping a homeowner compare local trade quotes. No platform fees or commissions."
+- If they say "Send it on WhatsApp / text me": "Happy to text the details right after! Could you give a quick rough ballpark range first so I can put you at the top of the client's list?"
+- If they say "I need to inspect the site first": "Totally understand. Do you charge an inspection/visit fee, or is the on-site estimate free?"
+- If they give the price immediately: Acknowledge it instantly and move to the remaining missing details without repeating yourself.
+
+Closing Wrap-up:
+"Thank you so much for the details. I've noted this down for the customer, and they'll reach out directly to confirm next steps. Have a great day!"
+
+Compliance & Safety:
+- Clearly disclose AI identity in your opening line.
+- Never commit to contracts, authorize work, or agree to payments. State that all estimates are for human review.
+- Extract structured data with verbatim spoken evidence accurately.`;
 
         console.log(`📞 [CALL-E Live] Dispatching call to ${vendor.name} (${cleanedPhone})...`);
         onVendorUpdate(vendor.id, { status: 'dialing' });
@@ -305,40 +309,73 @@ Safety & Compliance Rules:
           headers: { Authorization: `Bearer ${this.apiKey}` },
         });
 
+        let currentVendorStatus: string = 'dialing';
+
         if (eventsRes.ok) {
           const eventList = (await eventsRes.json()) as { data?: Array<{ id: string; type: string; message: string; status?: string }> };
           const events = eventList?.data || [];
           if (events.length > 0) {
-            const latest = events[events.length - 1];
-            if (latest.id !== lastEventId) {
-              lastEventId = latest.id;
-              const msg = latest.message.toLowerCase();
+            const lastIdx = lastEventId ? events.findIndex(e => e.id === lastEventId) : -1;
+            const newEvents = lastIdx >= 0 ? events.slice(lastIdx + 1) : events;
 
-              if (msg.includes('status=calling') || msg.includes('ringing')) {
-                onVendorUpdate(vendor.id, {
-                  status: 'ringing',
-                  transcriptSummary: '🔔 Phone ringing... Waiting for answer',
-                });
-              } else if (msg.includes('status=in_call') || msg.includes('answered') || msg.includes('talking') || msg.includes('connected')) {
+            for (const ev of newEvents) {
+              lastEventId = ev.id;
+              const msg = ev.message.toLowerCase();
+
+              if (
+                msg.startsWith('bot is speaking') ||
+                msg.startsWith('callee said') ||
+                msg.includes('call connected') ||
+                msg.includes('status=in_call') ||
+                msg.includes('answered') ||
+                msg.includes('talking') ||
+                msg.includes('connected')
+              ) {
+                currentVendorStatus = 'in-call';
+                const isBot = msg.startsWith('bot is speaking');
+                const isCallee = msg.startsWith('callee said');
+                const cleanUtterance = ev.message.replace(/^(bot is speaking|callee said):\s*/i, '').trim();
+                let summaryText = '🎙️ Connected! AI agent negotiating quote...';
+                if (isBot && cleanUtterance) {
+                  summaryText = `🤖 AI Agent: "${cleanUtterance.length > 60 ? cleanUtterance.slice(0, 57) + '...' : cleanUtterance}"`;
+                } else if (isCallee && cleanUtterance) {
+                  summaryText = `👤 Provider: "${cleanUtterance.length > 60 ? cleanUtterance.slice(0, 57) + '...' : cleanUtterance}"`;
+                }
+
                 onVendorUpdate(vendor.id, {
                   status: 'in-call',
-                  transcriptSummary: '🎙️ Connected! AI agent speaking with provider...',
+                  transcriptSummary: summaryText,
                 });
+              } else if (msg.includes('status=calling') || msg.includes('ringing')) {
+                if (currentVendorStatus !== 'in-call') {
+                  currentVendorStatus = 'ringing';
+                  onVendorUpdate(vendor.id, {
+                    status: 'ringing',
+                    transcriptSummary: '🔔 Phone ringing... Waiting for answer',
+                  });
+                }
               } else if (msg.includes('call ended') || msg.includes('syncing')) {
+                currentVendorStatus = 'analyzing';
                 onVendorUpdate(vendor.id, {
                   status: 'analyzing',
                   transcriptSummary: '📊 Call ended. AI extracting quote & transcript...',
                 });
               } else if (msg.includes('create task') || msg.includes('status=pending')) {
-                onVendorUpdate(vendor.id, {
-                  status: 'dialing',
-                  transcriptSummary: '📞 Connecting telecom carrier & dialing...',
-                });
+                if (currentVendorStatus !== 'in-call' && currentVendorStatus !== 'ringing') {
+                  currentVendorStatus = 'dialing';
+                  onVendorUpdate(vendor.id, {
+                    status: 'dialing',
+                    transcriptSummary: '📞 Connecting telecom carrier & dialing...',
+                  });
+                }
               } else if (msg.includes('create bot') || msg.includes('started') || msg.includes('robot')) {
-                onVendorUpdate(vendor.id, {
-                  status: 'initializing',
-                  transcriptSummary: '🤖 Provisioning Voice AI Agent...',
-                });
+                if (currentVendorStatus === 'dialing' || currentVendorStatus === 'initializing') {
+                  currentVendorStatus = 'initializing';
+                  onVendorUpdate(vendor.id, {
+                    status: 'initializing',
+                    transcriptSummary: '🤖 Provisioning Voice AI Agent...',
+                  });
+                }
               }
             }
           }
@@ -358,16 +395,27 @@ Safety & Compliance Rules:
           const callStatus = (call.status || '').toLowerCase();
 
           // Direct status check fallback so in-call / ringing is never missed
-          if (recipStatus === 'in_call' || recipStatus === 'answered' || recipStatus === 'in-call' || callStatus === 'in_call' || callStatus === 'in_progress') {
+          if (
+            recipStatus === 'in_call' ||
+            recipStatus === 'answered' ||
+            recipStatus === 'in-call' ||
+            callStatus === 'in_call' ||
+            callStatus === 'in_progress' ||
+            callStatus === 'active'
+          ) {
+            currentVendorStatus = 'in-call';
             onVendorUpdate(vendor.id, {
               status: 'in-call',
               transcriptSummary: '🎙️ Connected! AI agent speaking with provider...',
             });
           } else if (recipStatus === 'ringing' || recipStatus === 'calling') {
-            onVendorUpdate(vendor.id, {
-              status: 'ringing',
-              transcriptSummary: '🔔 Phone ringing... Waiting for answer',
-            });
+            if (currentVendorStatus !== 'in-call') {
+              currentVendorStatus = 'ringing';
+              onVendorUpdate(vendor.id, {
+                status: 'ringing',
+                transcriptSummary: '🔔 Phone ringing... Waiting for answer',
+              });
+            }
           }
 
           if (['completed', 'failed', 'canceled'].includes(call.status)) {

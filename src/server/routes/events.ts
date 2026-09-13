@@ -25,7 +25,15 @@ eventsRouter.get('/:id', (req, res) => {
   const eventName = `job:${jobId}`;
   quoteStore.on(eventName, listener);
 
+  // Send keepalive comments every 15s to prevent browser/proxy timeouts during long calls
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(':keepalive\n\n');
+    } catch (_) {}
+  }, 15000);
+
   req.on('close', () => {
+    clearInterval(keepAlive);
     quoteStore.off(eventName, listener);
     res.end();
   });
@@ -44,7 +52,14 @@ eventsRouter.get('/', (req, res) => {
 
   quoteStore.on('global', listener);
 
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(':keepalive\n\n');
+    } catch (_) {}
+  }, 15000);
+
   req.on('close', () => {
+    clearInterval(keepAlive);
     quoteStore.off('global', listener);
     res.end();
   });

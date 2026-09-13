@@ -139,10 +139,90 @@ const recentsList = $('#recents-list');
 const recentsBadge = $('#recents-badge');
 const topBarTitle = $('#top-bar-title');
 const threadUserPrompt = $('#thread-user-prompt');
+const threadSwarmList = $('#thread-swarm-list');
 const jobDesc = $('#job-desc');
 const selectedNumbersContainer = $('#selected-numbers-container');
 const launchBtn = $('#btn-launch-hunt');
 const addVendorModal = $('#add-vendor-modal');
+
+/* ─── Accessible Modal & Keyboard Controller (W3C WAI-ARIA) ──────────── */
+const AccessibleModalManager = {
+  stack: [],
+
+  open(modalEl, triggerEl = null) {
+    if (!modalEl) return;
+    const trigger = triggerEl || document.activeElement;
+    modalEl._priorActiveElement = trigger;
+    modalEl.classList.remove('hidden-view');
+
+    if (!this.stack.includes(modalEl)) {
+      this.stack.push(modalEl);
+    }
+  },
+
+  close(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.add('hidden-view');
+    this.stack = this.stack.filter(m => m !== modalEl);
+
+    if (modalEl._priorActiveElement && typeof modalEl._priorActiveElement.focus === 'function') {
+      try {
+        modalEl._priorActiveElement.focus();
+      } catch (_) { }
+    }
+  }
+};
+
+// Global Escape Key Listener & Tab Focus Trapping
+document.addEventListener('keydown', (e) => {
+  if (AccessibleModalManager.stack.length === 0) return;
+  const currentModal = AccessibleModalManager.stack[AccessibleModalManager.stack.length - 1];
+
+  // 1. Escape key closes the topmost modal
+  if (e.key === 'Escape' || e.keyCode === 27) {
+    e.preventDefault();
+    if (currentModal.id === 'delete-thread-modal') {
+      closeDeleteThreadModal();
+    } else if (currentModal.id === 'verify-call-modal') {
+      closeVerifyCallModal();
+    } else if (currentModal.id === 'add-vendor-modal') {
+      closeAddVendorModal();
+    } else if (currentModal.id === 'booking-dossier-modal') {
+      closeBookingDossierModal();
+    } else if (currentModal.id === 'conversation-modal') {
+      closeConversationModal();
+    } else if (currentModal.id === 'custom-confirm-modal') {
+      closeCustomConfirm();
+    } else {
+      AccessibleModalManager.close(currentModal);
+    }
+    return;
+  }
+
+  // 2. Tab key focus trapping
+  if (e.key === 'Tab' || e.keyCode === 9) {
+    const focusable = Array.from(currentModal.querySelectorAll(
+      'input:not([disabled]):not([type="hidden"]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )).filter(el => el.offsetParent !== null);
+
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+});
 
 /* ─── View Controller ───────────────────────────────────────────────── */
 function switchView(viewName, threadData = null) {
@@ -212,6 +292,15 @@ function renderRecentsList() {
     recentsBadge.textContent = recentThreads.length;
   }
 
+  const clearBtn = $('#btn-clear-all-history');
+  if (clearBtn) {
+    if (recentThreads.length > 0) {
+      clearBtn.classList.remove('hidden');
+    } else {
+      clearBtn.classList.add('hidden');
+    }
+  }
+
   if (recentThreads.length === 0) {
     recentsList.innerHTML = `<p class="text-xs text-gray-400 italic px-2.5 py-2">No recent negotiations</p>`;
     return;
@@ -224,11 +313,10 @@ function renderRecentsList() {
 
     return `
       <div 
-        class="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
-          isActive 
-            ? 'bg-gray-200/70 text-gray-900 font-medium' 
-            : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900 font-normal'
-        }" 
+        class="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-colors cursor-pointer ${isActive
+        ? 'bg-gray-200/70 text-gray-900 font-medium'
+        : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900 font-normal'
+      }" 
         onclick="loadThread(${idx})"
       >
         <div class="flex items-center gap-2 truncate flex-1 min-w-0 pr-1">
@@ -278,7 +366,7 @@ function renderRecentsList() {
     if (input) {
       input.focus();
       input.select();
-      
+
       let isHandled = false;
       const saveEdit = () => {
         if (isHandled || editingThreadIndex === null) return;
@@ -317,7 +405,7 @@ function renderRecentsList() {
   }
 }
 
-window.toggleRecentMenu = function(e, idx) {
+window.toggleRecentMenu = function (e, idx) {
   e.stopPropagation();
   const currentMenu = document.getElementById(`recent-menu-${idx}`);
   const isCurrentlyOpen = currentMenu && !currentMenu.classList.contains('hidden-view');
@@ -330,14 +418,14 @@ window.toggleRecentMenu = function(e, idx) {
   }
 };
 
-window.renameThread = function(e, idx) {
+window.renameThread = function (e, idx) {
   e.stopPropagation();
   document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
   editingThreadIndex = idx;
   renderRecentsList();
 };
 
-window.openDeleteThreadModal = function(e, idx) {
+window.openDeleteThreadModal = function (e, idx) {
   e.stopPropagation();
   document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
   const thread = recentThreads[idx];
@@ -347,12 +435,12 @@ window.openDeleteThreadModal = function(e, idx) {
   const preview = $('#delete-thread-title-preview');
   if (preview) preview.textContent = thread.title || thread.prompt || 'Negotiation Thread';
 
-  $('#delete-thread-modal')?.classList.remove('hidden-view');
+  AccessibleModalManager.open($('#delete-thread-modal'), e.target);
 };
 
 function closeDeleteThreadModal() {
   threadToDeleteIndex = null;
-  $('#delete-thread-modal')?.classList.add('hidden-view');
+  AccessibleModalManager.close($('#delete-thread-modal'));
 }
 
 $('#btn-cancel-delete-modal')?.addEventListener('click', closeDeleteThreadModal);
@@ -376,12 +464,43 @@ $('#btn-confirm-delete-modal')?.addEventListener('click', () => {
   closeDeleteThreadModal();
 });
 
+window.clearAllHistory = function () {
+  if (recentThreads.length === 0) return;
+  showCustomConfirm({
+    title: 'Clear All Stored History?',
+    subtitle: 'This will remove all saved negotiation threads from your browser cache.',
+    confirmText: 'Clear All',
+    confirmBgClass: 'bg-rose-600 hover:bg-rose-700',
+    icon: 'delete_sweep',
+    onConfirm: () => {
+      localStorage.removeItem(STORAGE_KEY_THREADS);
+      localStorage.removeItem(STORAGE_KEY_VIEW);
+      localStorage.removeItem(STORAGE_KEY_ACTIVE_ID);
+      localStorage.removeItem('quotehunter_threads_v1');
+      recentThreads = [];
+      activeThread = null;
+      switchView('home');
+      renderRecentsList();
+      showToast('All stored negotiations and cache cleared', 'info');
+    }
+  });
+};
+
+$('#btn-clear-all-history')?.addEventListener('click', () => {
+  window.clearAllHistory();
+});
+
+window.clearQuoteHunterCache = function () {
+  localStorage.clear();
+  location.reload();
+};
+
 // Close all 3-dot dropdowns when clicking outside
 document.addEventListener('click', () => {
   document.querySelectorAll('.recent-menu-dropdown').forEach(m => m.classList.add('hidden-view'));
 });
 
-window.loadThread = function(idx) {
+window.loadThread = function (idx) {
   if (editingThreadIndex !== null) return;
   const t = recentThreads[idx];
   if (t) {
@@ -409,7 +528,7 @@ function renderPhoneChips() {
   `;
 }
 
-window.removeVendor = function(idx) {
+window.removeVendor = function (idx) {
   if (isRunning) return;
   activeVendors.splice(idx, 1);
   renderPhoneChips();
@@ -534,21 +653,23 @@ function clearPhoneValidationError(isValid = false) {
 }
 
 /* ─── Add Number Modal ──────────────────────────────────────────────── */
-window.openAddVendorModal = function() {
+function openAddVendorModal() {
   if (isRunning) return;
   const nameInput = $('#input-vendor-name');
   const phoneInput = $('#input-vendor-phone');
   if (nameInput) nameInput.value = '';
   if (phoneInput) phoneInput.value = '';
   clearPhoneValidationError(false);
-  addVendorModal?.classList.remove('hidden-view');
+  AccessibleModalManager.open(addVendorModal);
   setTimeout(() => phoneInput?.focus(), 50);
-};
+}
+window.openAddVendorModal = openAddVendorModal;
 
-window.closeAddVendorModal = function() {
+function closeAddVendorModal() {
   clearPhoneValidationError(false);
-  addVendorModal?.classList.add('hidden-view');
-};
+  AccessibleModalManager.close(addVendorModal);
+}
+window.closeAddVendorModal = closeAddVendorModal;
 
 $('#btn-close-add-modal')?.addEventListener('click', closeAddVendorModal);
 $('#btn-cancel-add-modal')?.addEventListener('click', closeAddVendorModal);
@@ -777,8 +898,8 @@ function renderThreadSwarm(results) {
     const isSelected = selectedVendorName === name;
     const isBest = isCompleted && bestVendorName === name;
 
-    const selectedClasses = isSelected 
-      ? 'border-gray-800 ring-1 ring-gray-800/10 shadow-xs bg-gray-50/40' 
+    const selectedClasses = isSelected
+      ? 'border-gray-800 ring-1 ring-gray-800/10 shadow-xs bg-gray-50/40'
       : 'border-gray-200 hover:border-gray-300';
 
     if (isLive) {
@@ -888,7 +1009,7 @@ function renderThreadSwarm(results) {
   renderVendorDetail(selectedVendorName, results, bestVendorName);
 }
 
-window.selectVendor = function(vendorName) {
+window.selectVendor = function (vendorName) {
   selectedVendorName = vendorName;
   if (activeThread) {
     renderThreadSwarm(activeThread.results);
@@ -1028,7 +1149,7 @@ function parsePrice(str) {
   if (['not_provided', 'not_discussed', 'none', 'n/a', 'declined', 'unanswered', 'null', 'pending', 'unknown', '-', 'no quote', 'quoted'].includes(lower)) {
     return Infinity;
   }
-  
+
   const matches = str.match(/\d+(?:,\d{3})*(?:\.\d{2})?/g);
   if (!matches || matches.length === 0) return Infinity;
 
@@ -1096,6 +1217,7 @@ let audioPlaybackSpeed = 1;
 let activeAudioTurns = [];
 let currentTurnIndex = 0;
 let realAudioElement = null;
+let activeTurnAudio = null;
 
 // Phonetic & text normalizer to eliminate misspellings and robotic mispronunciations
 function normalizeTextForSpeech(text) {
@@ -1127,65 +1249,6 @@ function normalizeTextForSpeech(text) {
   return s.replace(/\s+/g, ' ').trim();
 }
 
-function getBestVoice(role) {
-  if (!('speechSynthesis' in window)) return null;
-  const voices = window.speechSynthesis.getVoices() || [];
-  if (voices.length === 0) return null;
-
-  // Filter out ancient robotic desktop synthesizers if modern natural/online/neural voices exist
-  const isNatural = (v) => 
-    v.name.includes('Natural') || 
-    v.name.includes('Online') || 
-    v.name.includes('Google') || 
-    v.name.includes('Neural') || 
-    v.name.includes('Premium');
-
-  const naturalVoices = voices.filter(isNatural);
-  const nonDesktopVoices = voices.filter(v => !v.name.includes('Desktop'));
-
-  const enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
-  const naturalEnVoices = naturalVoices.filter(v => v.lang && v.lang.startsWith('en'));
-  const cleanEnVoices = nonDesktopVoices.filter(v => v.lang && v.lang.startsWith('en'));
-
-  const pool = naturalEnVoices.length > 0 ? naturalEnVoices : (cleanEnVoices.length > 0 ? cleanEnVoices : (enVoices.length > 0 ? enVoices : voices));
-
-  if (role === 'agent') {
-    // Professional, crisp assistant voice (Jenny, Aria, Samantha, Google US English, Ava)
-    return pool.find(v => 
-      v.name.includes('Jenny') || 
-      v.name.includes('Aria') || 
-      v.name.includes('Samantha') || 
-      v.name.includes('Google US English') || 
-      v.name.includes('Ava') || 
-      v.name.includes('Zira') ||
-      v.name.includes('Female')
-    ) || pool[0];
-  } else {
-    // Warm, realistic human voice for contractor/customer (Christopher, Eric, Guy, Andrew, Ryan, Google UK, Daniel, Alex)
-    return pool.find(v => 
-      v.name.includes('Christopher') || 
-      v.name.includes('Eric') || 
-      v.name.includes('Guy') || 
-      v.name.includes('Andrew') || 
-      v.name.includes('Ryan') || 
-      v.name.includes('Steffan') || 
-      v.name.includes('Google UK English Male') || 
-      v.name.includes('Google US English') || 
-      v.name.includes('Daniel') || 
-      v.name.includes('Alex') || 
-      v.name.includes('Mark') || 
-      (!v.name.includes('Desktop') && v.name.includes('Male'))
-    ) || pool.find(v => !v.name.includes('Desktop')) || pool[pool.length > 1 ? 1 : 0];
-  }
-}
-
-if ('speechSynthesis' in window) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    // Prewarm voice list
-    window.speechSynthesis.getVoices();
-  };
-}
-
 function extractVendorTurns(r, promptText) {
   if (r && r.turns && Array.isArray(r.turns) && r.turns.length > 0) {
     return r.turns;
@@ -1198,7 +1261,7 @@ function extractVendorTurns(r, promptText) {
 
   // If call was canceled, failed, no-answer, or did not produce a valid quote
   const isFailedOrCanceled = ['failed', 'no-answer', 'refused', 'error', 'canceled', 'declined', 'unanswered'].includes(status)
-    || summaryText.includes('canceled') 
+    || summaryText.includes('canceled')
     || summaryText.includes('stopped')
     || summaryText.includes('declined')
     || summaryText.includes('unreachable')
@@ -1254,71 +1317,7 @@ function extractVendorTurns(r, promptText) {
     termsQuote = 'All materials, labor, and warranty are included as discussed.';
   }
 
-  const turns = [
-    {
-      role: 'agent',
-      text: promptText ? `Hello, I am calling regarding: ${promptText.length > 80 ? promptText.slice(0, 80) + '...' : promptText}` : 'Hello, I am calling regarding your services.',
-      timeRange: '00:00:01-00:00:05',
-      latency: '0ms',
-      duration: '00:04'
-    },
-    {
-      role: 'user',
-      text: 'Hello. Yes, tell me the requirements.',
-      timeRange: '00:00:05-00:00:08',
-      latency: '380ms',
-      duration: '00:03'
-    },
-    {
-      role: 'agent',
-      text: 'Are you available to take this job, and what would be the estimated timeline to complete it?',
-      timeRange: '00:00:08-00:00:15',
-      latency: '450ms',
-      duration: '00:07'
-    },
-    {
-      role: 'user',
-      text: timelineQuote,
-      timeRange: '00:00:16-00:00:26',
-      latency: '420ms',
-      duration: '00:10'
-    },
-    {
-      role: 'agent',
-      text: 'Could you provide the total price estimate and cost breakdown for materials and labor?',
-      timeRange: '00:00:27-00:00:36',
-      latency: '510ms',
-      duration: '00:09'
-    },
-    {
-      role: 'user',
-      text: priceQuote,
-      timeRange: '00:00:37-00:00:52',
-      latency: '480ms',
-      duration: '00:15'
-    },
-    {
-      role: 'agent',
-      text: 'Are there any extra conditions, hidden charges, or warranty included?',
-      timeRange: '00:00:53-00:01:02',
-      latency: '460ms',
-      duration: '00:09'
-    },
-    {
-      role: 'user',
-      text: termsQuote,
-      timeRange: '00:01:03-00:01:12',
-      latency: '430ms',
-      duration: '00:09'
-    },
-    {
-      role: 'agent',
-      text: 'Understood. Thank you for providing the quote details. Have a great day!',
-      timeRange: '00:01:13-00:01:15',
-      latency: '390ms',
-      duration: '00:02'
-    }
-  ];
+
 
   return turns;
 }
@@ -1379,9 +1378,9 @@ function openConversationModal(vendorName) {
           <div>
             <p class="text-sm font-semibold text-gray-800">No Spoken Conversation Recorded</p>
             <p class="text-xs text-gray-400 mt-1 max-w-sm">
-              ${r.status === 'failed' || (r.summary && r.summary.includes('stopped')) 
-                ? 'This call was canceled before a conversation took place.' 
-                : 'The call was unanswered or declined by the provider.'}
+              ${r.status === 'failed' || (r.summary && r.summary.includes('stopped'))
+          ? 'This call was canceled before a conversation took place.'
+          : 'The call was unanswered or declined by the provider.'}
             </p>
           </div>
         </div>
@@ -1459,12 +1458,12 @@ function openConversationModal(vendorName) {
   }
 
   resetAudioPlayer();
-  $('#conversation-modal')?.classList.remove('hidden-view');
+  AccessibleModalManager.open($('#conversation-modal'));
 }
 
 function closeConversationModal() {
   pauseAudio();
-  $('#conversation-modal')?.classList.add('hidden-view');
+  AccessibleModalManager.close($('#conversation-modal'));
 }
 
 function resetAudioPlayer() {
@@ -1486,7 +1485,7 @@ function playCallRecording() {
   const targetName = selectedVendorName;
   const r = activeThread ? activeThread.results[targetName] : null;
 
-  // 1. If real audio URL exists (CALL-E MP3/WAV recording)
+  // 1. If real telephony recording audio URL exists
   if (r && r.audioUrl && typeof r.audioUrl === 'string' && r.audioUrl.startsWith('http')) {
     if (!realAudioElement) {
       realAudioElement = new Audio();
@@ -1505,23 +1504,23 @@ function playCallRecording() {
       const playIcon = $('#audio-play-icon');
       if (playIcon) playIcon.textContent = 'pause';
     }).catch(err => {
-      console.warn('Real audio playback failed, falling back to speech synthesis:', err);
-      startSpeechSynthesisTurns();
+      console.warn('Real audio playback failed:', err);
+      pauseAudio();
+      showToast('Unable to stream provider call recording. The audio file is unreachable.', 'error');
     });
     return;
   }
 
-  // 2. Real Browser Speech Synthesis
-  startSpeechSynthesisTurns();
+  // 2. High-fidelity Neural Edge-TTS playback
+  startNeuralTTSPlayback();
 }
 
-function startSpeechSynthesisTurns() {
-  if (!('speechSynthesis' in window)) {
-    showToast('Voice speech synthesis not supported in this browser.', 'error');
+function startNeuralTTSPlayback() {
+  if (!activeAudioTurns || activeAudioTurns.length === 0) {
+    showToast('No conversation dialogue available for audio playback.', 'info');
     return;
   }
 
-  window.speechSynthesis.cancel();
   isAudioPlaying = true;
   const playIcon = $('#audio-play-icon');
   if (playIcon) playIcon.textContent = 'pause';
@@ -1566,32 +1565,54 @@ function speakTurn(index) {
     return;
   }
 
-  const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
-  utterance.rate = (t.role === 'agent' ? 1.02 : 1.0) * audioPlaybackSpeed;
-  utterance.pitch = t.role === 'agent' ? 1.04 : 1.0;
-  utterance.lang = 'en-US';
-
-  const bestVoice = getBestVoice(t.role);
-  if (bestVoice) {
-    utterance.voice = bestVoice;
+  // Stop any active turn audio cleanly
+  if (activeTurnAudio) {
+    activeTurnAudio.pause();
+    activeTurnAudio.removeAttribute('src');
+    activeTurnAudio.load();
+    activeTurnAudio = null;
   }
 
-  utterance.onend = () => {
-    if (isAudioPlaying) {
+  const roleParam = (t.role === 'agent') ? 'agent' : 'user';
+  const audioUrl = `/api/tts?text=${encodeURIComponent(cleanSpokenText)}&role=${roleParam}`;
+
+  const audio = new Audio(audioUrl);
+  activeTurnAudio = audio;
+  audio.playbackRate = audioPlaybackSpeed;
+
+  audio.onended = () => {
+    if (isAudioPlaying && activeTurnAudio === audio) {
       setTimeout(() => {
         speakTurn(index + 1);
-      }, 300 / audioPlaybackSpeed);
+      }, 350 / audioPlaybackSpeed);
     }
   };
 
-  utterance.onerror = (e) => {
-    console.warn('Speech synthesis turn error:', e);
-    if (isAudioPlaying) {
-      speakTurn(index + 1);
+  audio.onerror = () => {
+    if (activeTurnAudio === audio) {
+      console.error(`Neural TTS audio stream failed for turn ${index}`);
+      pauseAudio();
+      showToast('Audio playback could not load for this turn. Please check your network.', 'error');
     }
   };
 
-  window.speechSynthesis.speak(utterance);
+  audio.play().catch(err => {
+    if (activeTurnAudio === audio) {
+      console.warn('Playback error / autoplay blocked:', err);
+      pauseAudio();
+      showToast('Audio playback was blocked or failed to load. Please click to resume.', 'error');
+    }
+  });
+
+  // Background pre-fetch next turn audio into server and browser cache
+  if (index + 1 < activeAudioTurns.length) {
+    const nextTurn = activeAudioTurns[index + 1];
+    const nextText = normalizeTextForSpeech(nextTurn.text);
+    if (nextText) {
+      const nextRole = (nextTurn.role === 'agent') ? 'agent' : 'user';
+      fetch(`/api/tts?text=${encodeURIComponent(nextText)}&role=${nextRole}`).catch(() => {});
+    }
+  }
 }
 
 function pauseAudio() {
@@ -1603,8 +1624,9 @@ function pauseAudio() {
     realAudioElement.pause();
   }
 
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
+  if (activeTurnAudio) {
+    activeTurnAudio.pause();
+    activeTurnAudio = null;
   }
 
   if (audioPlayInterval) {
@@ -1629,7 +1651,7 @@ function clearTurnHighlights() {
   });
 }
 
-window.jumpToTurn = function(index) {
+function jumpToTurn(index) {
   if (index < 0 || index >= activeAudioTurns.length) return;
   currentTurnIndex = index;
   const t = activeAudioTurns[index];
@@ -1638,12 +1660,12 @@ window.jumpToTurn = function(index) {
     updateAudioUI();
   }
   if (isAudioPlaying) {
-    window.speechSynthesis.cancel();
     speakTurn(index);
   } else {
     togglePlayAudio();
   }
-};
+}
+window.jumpToTurn = jumpToTurn;
 
 function updateAudioUI() {
   const scrubber = $('#audio-scrubber');
@@ -1672,6 +1694,12 @@ $('#audio-scrubber')?.addEventListener('input', (e) => {
 
 $('#audio-speed-select')?.addEventListener('change', (e) => {
   audioPlaybackSpeed = parseFloat(e.target.value) || 1;
+  if (activeTurnAudio) {
+    activeTurnAudio.playbackRate = audioPlaybackSpeed;
+  }
+  if (realAudioElement) {
+    realAudioElement.playbackRate = audioPlaybackSpeed;
+  }
 });
 
 // Up & Down Arrow Chevrons Navigation
@@ -1710,11 +1738,10 @@ function showToast(message, type = 'info') {
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 font-sans ${
-    type === 'success' 
-      ? 'bg-gray-900 text-white border-gray-800' 
-      : (type === 'error' ? 'bg-rose-900 text-white border-rose-800' : 'bg-gray-900 text-white border-gray-800')
-  }`;
+  toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 font-sans ${type === 'success'
+    ? 'bg-gray-900 text-white border-gray-800'
+    : (type === 'error' ? 'bg-rose-900 text-white border-rose-800' : 'bg-gray-900 text-white border-gray-800')
+    }`;
 
   const iconName = type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info');
   const iconColor = type === 'success' ? 'text-emerald-400' : (type === 'error' ? 'text-rose-400' : 'text-teal-400');
@@ -1754,7 +1781,7 @@ function showCustomConfirm(options) {
     icon = 'help_outline',
     iconColorClass = 'text-rose-600',
     iconBgClass = 'bg-rose-50 border-rose-100',
-    onConfirm = () => {},
+    onConfirm = () => { },
   } = options;
 
   onConfirmActionCallback = onConfirm;
@@ -1787,12 +1814,12 @@ function showCustomConfirm(options) {
     iconBox.className = `w-10 h-10 rounded-full ${iconBgClass} border flex items-center justify-center ${iconColorClass} shrink-0`;
   }
 
-  modal.classList.remove('hidden-view');
+  AccessibleModalManager.open(modal);
 }
 
 function closeCustomConfirm() {
   onConfirmActionCallback = null;
-  $('#custom-confirm-modal')?.classList.add('hidden-view');
+  AccessibleModalManager.close($('#custom-confirm-modal'));
 }
 
 $('#btn-cancel-confirm-modal')?.addEventListener('click', closeCustomConfirm);
@@ -1880,12 +1907,12 @@ function openBookingDossierModal(vendorName) {
     waLink.href = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(waMsg)}`;
   }
 
-  $('#booking-dossier-modal')?.classList.remove('hidden-view');
+  AccessibleModalManager.open($('#booking-dossier-modal'));
 }
 
 function closeBookingDossierModal() {
   currentDossierData = null;
-  $('#booking-dossier-modal')?.classList.add('hidden-view');
+  AccessibleModalManager.close($('#booking-dossier-modal'));
 }
 
 $('#btn-close-dossier')?.addEventListener('click', closeBookingDossierModal);
@@ -1935,7 +1962,7 @@ jobDesc?.addEventListener('input', () => {
   }
 });
 
-window.cancelPendingDispatch = function(e) {
+window.cancelPendingDispatch = function (e) {
   if (e) e.stopPropagation();
   executeStopSwarm();
 };
@@ -2017,12 +2044,12 @@ function openVerifyCallModal(promptText, onConfirm) {
     promptPreview.textContent = promptText;
   }
 
-  modal.classList.remove('hidden-view');
+  AccessibleModalManager.open(modal);
 }
 
 function closeVerifyCallModal() {
   onPreCallConfirmCallback = null;
-  $('#verify-call-modal')?.classList.add('hidden-view');
+  AccessibleModalManager.close($('#verify-call-modal'));
 }
 
 $('#btn-cancel-verify-call')?.addEventListener('click', closeVerifyCallModal);
@@ -2044,12 +2071,12 @@ $('#btn-confirm-verify-call')?.addEventListener('click', () => {
 async function executeLaunchCampaign(promptText) {
   const initResults = {};
   activeVendors.forEach(v => {
-    initResults[v.name] = { 
-      status: 'initializing', 
-      quote: null, 
-      timeline: null, 
-      summary: null, 
-      evidence: null 
+    initResults[v.name] = {
+      status: 'initializing',
+      quote: null,
+      timeline: null,
+      summary: null,
+      evidence: null
     };
   });
 
@@ -2171,14 +2198,32 @@ async function executeLaunchCampaign(promptText) {
       }
     };
 
-    eventSource.onerror = () => {
-      eventSource.close();
-      isRunning = false;
-      if (launchBtn) launchBtn.disabled = false;
-      newThread.isLive = false;
-      saveThreadsToStorage();
-      renderRecentsList();
+    eventSource.onerror = (err) => {
+      // Do not kill the job on transient SSE network errors; let browser auto-retry or fallback polling take over
+      console.warn('⚠️ SSE EventSource transient hiccup, relying on auto-reconnect & backup poll...', err);
     };
+
+    // Backup polling loop every 3 seconds to guarantee updates never stall even if SSE drops
+    const backupPollInterval = setInterval(async () => {
+      if (!isRunning) {
+        clearInterval(backupPollInterval);
+        return;
+      }
+      try {
+        const checkRes = await fetch(`/api/quotes`);
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          const currentJob = checkData.jobs?.find(j => j.id === jobId);
+          if (currentJob) {
+            handleEvent({ type: 'initial', job: currentJob }, newThread);
+            if (currentJob.status === 'completed' || currentJob.status === 'failed') {
+              clearInterval(backupPollInterval);
+              if (eventSource) eventSource.close();
+            }
+          }
+        }
+      } catch (_) { }
+    }, 3000);
   } catch (err) {
     if (err.message === 'Canceled before dialing') {
       console.log('🛑 Dispatched call aborted during 3-second buffer.');
@@ -2240,6 +2285,48 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
 function handleEvent(ev, thread) {
   if (!ev || !thread) return;
 
+  if (ev.type === 'initial' && ev.job && Array.isArray(ev.job.vendors)) {
+    ev.job.vendors.forEach(v => {
+      if (v && v.name) {
+        thread.results[v.name] = {
+          status: v.status,
+          quote: v.priceEstimate || thread.results[v.name]?.quote,
+          timeline: v.availability || thread.results[v.name]?.timeline,
+          summary: v.transcriptSummary || v.providerNotes || thread.results[v.name]?.summary,
+          evidence: v.evidenceSnippet || thread.results[v.name]?.evidence,
+          turns: v.turns || thread.results[v.name]?.turns,
+          durationFormatted: v.durationFormatted || thread.results[v.name]?.durationFormatted,
+          durationSeconds: v.durationSeconds || thread.results[v.name]?.durationSeconds,
+          callHash: v.callHash || thread.results[v.name]?.callHash,
+          audioUrl: v.audioUrl || thread.results[v.name]?.audioUrl,
+          phone: v.phone || thread.results[v.name]?.phone,
+          createdAt: v.createdAt || thread.results[v.name]?.createdAt || thread.createdAt || new Date().toISOString(),
+          completedAt: v.completedAt || thread.results[v.name]?.completedAt || new Date().toISOString(),
+        };
+      }
+    });
+
+    if (ev.job.status === 'completed' || ev.job.status === 'failed') {
+      if (eventSource) eventSource.close();
+      isRunning = false;
+      if (launchBtn) launchBtn.disabled = false;
+      thread.isLive = false;
+
+      const statusBadge = $('#thread-status-badge');
+      if (statusBadge) {
+        statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200 text-[11px] font-medium';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span>Completed</span>';
+      }
+    }
+
+    saveThreadsToStorage();
+    if (activeThread && activeThread.id === thread.id) {
+      renderThreadSwarm(thread.results);
+    }
+    renderRecentsList();
+    return;
+  }
+
   if (ev.type === 'vendor_updated' && ev.vendor) {
     const v = ev.vendor;
     const vendorName = v.name;
@@ -2259,7 +2346,7 @@ function handleEvent(ev, thread) {
         createdAt: v.createdAt || thread.results[vendorName]?.createdAt || thread.createdAt || new Date().toISOString(),
         completedAt: v.completedAt || thread.results[vendorName]?.completedAt || new Date().toISOString(),
       };
-      
+
       saveThreadsToStorage();
 
       if (activeThread && activeThread.id === thread.id) {
@@ -2288,10 +2375,184 @@ function handleEvent(ev, thread) {
   }
 }
 
+/* ─── Server Job Synchronization on Startup ─────────────────────────── */
+async function syncServerJobs() {
+  try {
+    const res = await fetch('/api/hunt');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.jobs)) {
+      data.jobs.forEach(job => {
+        let existing = recentThreads.find(t => t.jobId === job.id || t.id === job.id);
+        const results = {};
+        job.vendors.forEach(v => {
+          results[v.name] = {
+            status: v.status,
+            quote: v.priceEstimate,
+            timeline: v.availability,
+            summary: v.transcriptSummary || v.providerNotes,
+            evidence: v.evidenceSnippet,
+            turns: v.turns,
+            durationFormatted: v.durationFormatted,
+            durationSeconds: v.durationSeconds,
+            callHash: v.callHash,
+            audioUrl: v.audioUrl,
+            phone: v.phone,
+            createdAt: v.createdAt || job.createdAt,
+            completedAt: v.completedAt || job.updatedAt,
+          };
+        });
+
+        if (!existing) {
+          const newT = {
+            id: job.id,
+            jobId: job.id,
+            title: job.description || job.title,
+            prompt: job.description,
+            isLive: job.status === 'active' || job.status === 'initializing',
+            results,
+            createdAt: job.createdAt,
+          };
+          recentThreads.push(newT);
+        } else {
+          Object.assign(existing.results, results);
+          if (job.status === 'completed' || job.status === 'failed') {
+            existing.isLive = false;
+          }
+        }
+      });
+
+      saveThreadsToStorage();
+      renderRecentsList();
+      if (activeThread) {
+        const updated = recentThreads.find(t => t.id === activeThread.id || t.jobId === activeThread.jobId);
+        if (updated) {
+          activeThread = updated;
+          renderThreadSwarm(activeThread.results);
+        }
+      }
+    }
+  } catch (_) { }
+}
+
+/* ─── Server Wake & Status Loading Orchestrator ─────────────────────── */
+let isServerLoading = true;
+
+async function checkServerStatusAndWake() {
+  const splash = document.getElementById('render-splash-screen');
+  if (!splash) {
+    isServerLoading = false;
+    return;
+  }
+
+  isServerLoading = true;
+  const statusText = document.getElementById('splash-status-text');
+  const timerText = document.getElementById('splash-timer-text');
+  const timerEl = document.getElementById('splash-timer');
+  const progressBar = document.getElementById('splash-progress');
+  const wakeHint = document.getElementById('splash-wake-hint');
+
+  const startTime = Date.now();
+  let elapsedSec = 0;
+
+  // Real-time stopwatch for Render cold-starts
+  const timerInterval = setInterval(() => {
+    if (!isServerLoading) {
+      clearInterval(timerInterval);
+      return;
+    }
+    elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+    if (timerEl) timerEl.textContent = `${elapsedSec}s`;
+
+    if (elapsedSec >= 4 && statusText) {
+      statusText.textContent = 'Waking Render web service...';
+    }
+    if (elapsedSec >= 15 && statusText) {
+      statusText.textContent = 'Container starting & initializing voice swarm...';
+    }
+  }, 1000);
+
+  // Called immediately when /api/status responds successfully
+  function onStatusReceived(data) {
+    if (!isServerLoading) return;
+    isServerLoading = false;
+    clearInterval(timerInterval);
+
+    if (statusText) {
+      statusText.textContent = 'Connected! Ready.';
+      statusText.className = 'text-xs font-semibold text-emerald-600 text-center transition-all';
+    }
+    if (progressBar) {
+      progressBar.classList.remove('w-1/3', 'animate-pulse');
+      progressBar.className = 'h-full bg-emerald-600 rounded-full w-full transition-all duration-300';
+    }
+    if (wakeHint) {
+      wakeHint.style.opacity = '0';
+    }
+
+    // Dismiss splash screen cleanly
+    const exitDelay = elapsedSec === 0 ? 250 : 150;
+    setTimeout(() => {
+      splash.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        splash.remove();
+      }, 400);
+    }, exitDelay);
+  }
+
+  // Hit the status API
+  async function hitStatusApi() {
+    try {
+      const res = await fetch('/api/status', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'online') {
+          onStatusReceived(data);
+          return true;
+        }
+      }
+    } catch (_) {
+      // Server is asleep on Render or booting up
+    }
+    return false;
+  }
+
+  // Initial status check
+  const isOnline = await hitStatusApi();
+  if (isOnline) return;
+
+  // Poll until container awakens and status is received
+  const pollTimer = setInterval(async () => {
+    if (!isServerLoading) {
+      clearInterval(pollTimer);
+      return;
+    }
+    const ok = await hitStatusApi();
+    if (ok) {
+      clearInterval(pollTimer);
+    }
+  }, 1500);
+
+  // ─── Render 15-Minute Inactivity Sleep Prevention ─────────────────
+  // Keeps the container awake while the user has QuoteHunter open
+  setInterval(() => {
+    fetch('/api/status', { cache: 'no-store' }).catch(() => {});
+  }, 9 * 60 * 1000);
+
+  // Instant re-wake if user switches back to this tab after being away
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      fetch('/api/status', { cache: 'no-store' }).catch(() => {});
+    }
+  });
+}
+
 /* ─── Startup ───────────────────────────────────────────────────────── */
+checkServerStatusAndWake();
 loadThreadsFromStorage();
 renderPhoneChips();
 renderRecentsList();
+syncServerJobs();
 
 const savedView = localStorage.getItem(STORAGE_KEY_VIEW);
 const savedThreadId = localStorage.getItem(STORAGE_KEY_ACTIVE_ID);
