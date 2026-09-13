@@ -33,3 +33,4 @@ Thumbs.db
 src/test-*.ts
 src/get-openapi.ts
 src/check-events.ts
+fork_work/
