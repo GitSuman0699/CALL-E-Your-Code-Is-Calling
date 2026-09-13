@@ -48,7 +48,7 @@ quotesRouter.post('/', async (req, res) => {
       if (!cleaned.startsWith('+') || !/^\+[1-9]\d{7,14}$/.test(cleaned)) {
         return res.status(400).json({
           success: false,
-          error: `Invalid phone number "${v.phone}" for ${v.name || 'vendor'}. Phone numbers must include country code starting with '+' followed by 8-15 digits (e.g. +918016086948 or +14155550100).`,
+          error: `Invalid phone number "${v.phone}" for ${v.name || 'vendor'}. Phone numbers must include country code starting with '+' followed by 8-15 digits (e.g. +15550100100 or +15550100101).`,
         });
       }
       v.phone = cleaned;

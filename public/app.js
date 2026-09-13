@@ -8,68 +8,68 @@ const PRESETS = {
     name: 'Painting RFQ',
     desc: 'Call and inquire if they are available to paint a 3BHK apartment (~1,400 sq ft) including walls, ceilings, and primer coat at the earliest. Ask for an estimated total price with materials vs labor breakdown, estimated completion timeline, and whether a warranty on paint finish is included.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Raj Painters', phone: '+919876543210' },
-      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+      { name: 'Apex Painting Co. (Demo)', phone: '+15550100100' },
+      { name: 'Raj Painters (Demo)', phone: '+15550100101' },
+      { name: 'Urban Colors Ltd. (Demo)', phone: '+15550100102' },
     ],
   },
   plumbing: {
     name: 'Plumbing Repair',
     desc: 'Call to check immediate availability for an urgent plumbing repair. We need to fix a leaking kitchen sink drain pipe and clear a blocked bathroom drain line. Ask for their standard inspection visit charge, total repair cost estimate, and earliest arrival time.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Sharma Plumbing', phone: '+919900110011' },
-      { name: 'AquaFix Services', phone: '+918800220022' },
+      { name: 'Metro Plumbing & Drain (Demo)', phone: '+15550100100' },
+      { name: 'Sharma Plumbing (Demo)', phone: '+15550100101' },
+      { name: 'AquaFix Services (Demo)', phone: '+15550100102' },
     ],
   },
   electrical: {
     name: 'Electrical Work',
     desc: 'Call to check earliest availability for electrical work: complete safety inspection and replacement of a 63A MCB distribution board, plus wiring 4 new AC heavy-load power points. Ask for per-point labor rates, total estimated cost, and safety guarantee.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Bright Spark Electricals', phone: '+918811122233' },
-      { name: 'Volt Masters', phone: '+919933344455' },
+      { name: 'Apex Electric Works (Demo)', phone: '+15550100100' },
+      { name: 'Bright Spark Electricals (Demo)', phone: '+15550100101' },
+      { name: 'Volt Masters (Demo)', phone: '+15550100102' },
     ],
   },
   carpentry: {
     name: 'Custom Carpentry',
     desc: 'Call to request a quote for building a custom floor-to-ceiling bedroom wardrobe (7x6 ft) with soft-close hydraulic hinges and matte laminate finish. Ask for per-square-foot material and labor rates, earliest start date, and estimated completion timeline.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'WoodCraft Studio', phone: '+919811223344' },
-      { name: 'TimberTech Interiors', phone: '+918722334455' },
+      { name: 'Bay Custom Woodworks (Demo)', phone: '+15550100100' },
+      { name: 'WoodCraft Studio (Demo)', phone: '+15550100101' },
+      { name: 'TimberTech Interiors (Demo)', phone: '+15550100102' },
     ],
   },
   personal: {
     name: 'Personal Message',
     desc: 'Call and convey a friendly reminder regarding our upcoming project kickoff meeting. Ask them to confirm if their schedule is on track or if they prefer adjusting the meeting time.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
+      { name: 'Project Lead (Demo)', phone: '+15550100100' },
     ],
   },
   business: {
     name: 'Ask a Business',
     desc: 'Call the vendor to inquire about bulk corporate pricing for 25 ergonomic office chairs and 10 motorized standing desks. Ask for their wholesale discount catalog, delivery lead time, and GST invoice terms.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Raj Painters', phone: '+919876543210' },
-      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+      { name: 'Apex Office Outfitters (Demo)', phone: '+15550100100' },
+      { name: 'Raj Commercial Supplies (Demo)', phone: '+15550100101' },
+      { name: 'Urban Colors Ltd. (Demo)', phone: '+15550100102' },
     ],
   },
   booking: {
     name: 'Book or Reschedule',
     desc: 'Call the service manager to schedule an on-site property inspection for the earliest available morning slot. If that slot is fully booked, ask for their next available appointment options.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Urban Colors Ltd.', phone: '+918765432109' },
+      { name: 'Central Inspection Desk (Demo)', phone: '+15550100100' },
+      { name: 'Urban Colors Ltd. (Demo)', phone: '+15550100101' },
     ],
   },
   followup: {
     name: 'Follow Up',
     desc: 'Call the contractor to follow up on the recent quote estimate. Mention we have competing vendor bids around 10% lower, and ask if they can match that price with premium materials and warranty included.',
     vendors: [
-      { name: 'My Mobile', phone: '+918016086948' },
-      { name: 'Raj Painters', phone: '+919876543210' },
+      { name: 'Apex Contracting (Demo)', phone: '+15550100100' },
+      { name: 'Raj Painters (Demo)', phone: '+15550100101' },
     ],
   }
 };
@@ -1331,7 +1331,7 @@ function openConversationModal(vendorName) {
   if (!r) return;
 
   const vendorObj = activeVendors.find(v => v.name === targetName);
-  const phone = (vendorObj && vendorObj.phone) || r.phone || '+91 80160 86948';
+  const phone = (vendorObj && vendorObj.phone) || r.phone || '+1 555 010 0100';
   const callHash = r.callHash || 'aff5e5c8652440d0af3b55c7bba121d1';
 
   // Set active turns using actual evidence & transcript
@@ -1831,7 +1831,7 @@ function openBookingDossierModal(vendorName) {
   if (!r) return;
 
   const vendorObj = activeVendors.find(v => v.name === targetName);
-  const unmaskedPhone = (vendorObj && vendorObj.phone) || r.phone || '+91 80160 86948';
+  const unmaskedPhone = (vendorObj && vendorObj.phone) || r.phone || '+1 555 010 0100';
   const cleanDigits = unmaskedPhone.replace(/[^\d]/g, '');
 
   const price = formatDisplayPrice(r.quote || 'As discussed');
@@ -2211,7 +2211,7 @@ $('#hunt-form')?.addEventListener('submit', async (e) => {
     return;
   }
 
-  // If no vendors added yet, try auto-extracting from prompt text (e.g. +918016086948)
+  // If no vendors added yet, try auto-extracting from prompt text (e.g. +15550100100)
   if (activeVendors.length === 0) {
     const phoneMatches = promptText.match(/\+?\d{10,15}/g);
     if (phoneMatches && phoneMatches.length > 0) {
