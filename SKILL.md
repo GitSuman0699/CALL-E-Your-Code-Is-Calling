@@ -10,7 +10,7 @@ When users need quotes from local service providers (painters, plumbers, electri
 ## Workflow
 
 1. **Clarify the Job**: Collect the service category, detailed requirements, target location, and language preference (Hindi or English).
-2. **Collect Providers**: Gather 2 to 5 phone numbers of local providers (in E.164 format e.g. `+919876543210`).
+2. **Collect Providers**: Gather 2 to 5 phone numbers of local providers (in E.164 format e.g. `+911557521212`).
 3. **Execute via CALL-E**:
    Use the CALL-E batch execution API to plan and run the calls simultaneously:
 
